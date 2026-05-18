@@ -7,6 +7,7 @@ using Sutando.Channels.Cli;
 using Sutando.Channels.Discord;
 using Sutando.Channels.Telegram;
 using Sutando.Dashboard;
+using Sutando.Phone;
 using Sutando.Voice;
 using Sutando.Workspace;
 
@@ -297,6 +298,13 @@ internal static class Commands
         var forwarded = args.Length > 1 ? args[1..] : [];
         using var cts = NewSigIntCts();
         return await VoiceCommand.RunAsync(forwarded, cts.Token).ConfigureAwait(false);
+    }
+
+    public static async Task<int> PhoneAsync(string[] args)
+    {
+        var forwarded = args.Length > 1 ? args[1..] : [];
+        using var cts = NewSigIntCts();
+        return await PhoneCommand.RunAsync(forwarded, cts.Token).ConfigureAwait(false);
     }
 
     public static async Task<int> DiscordAsync(string[] args)

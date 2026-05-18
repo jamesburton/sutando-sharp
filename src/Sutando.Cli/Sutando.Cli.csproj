@@ -27,6 +27,7 @@
     <ProjectReference Include="..\Sutando.Api\Sutando.Api.csproj" />
     <ProjectReference Include="..\Sutando.Dashboard\Sutando.Dashboard.csproj" />
     <ProjectReference Include="..\Sutando.Voice\Sutando.Voice.csproj" />
+    <ProjectReference Include="..\Sutando.Phone\Sutando.Phone.csproj" />
   </ItemGroup>
 
 </Project>
