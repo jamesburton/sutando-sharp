@@ -39,6 +39,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sutando.Dashboard", "src\Su
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sutando.Voice", "src\Sutando.Voice\Sutando.Voice.csproj", "{C8277E1F-C0FF-4A2C-BBBF-779398725374}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sutando.LocalInference.Abstractions", "src\Sutando.LocalInference.Abstractions\Sutando.LocalInference.Abstractions.csproj", "{61E2E16E-6FE1-41DA-BDFC-1C80B06D3FBF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -253,6 +255,18 @@ Global
 		{C8277E1F-C0FF-4A2C-BBBF-779398725374}.Release|x64.Build.0 = Release|Any CPU
 		{C8277E1F-C0FF-4A2C-BBBF-779398725374}.Release|x86.ActiveCfg = Release|Any CPU
 		{C8277E1F-C0FF-4A2C-BBBF-779398725374}.Release|x86.Build.0 = Release|Any CPU
+		{61E2E16E-6FE1-41DA-BDFC-1C80B06D3FBF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{61E2E16E-6FE1-41DA-BDFC-1C80B06D3FBF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{61E2E16E-6FE1-41DA-BDFC-1C80B06D3FBF}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{61E2E16E-6FE1-41DA-BDFC-1C80B06D3FBF}.Debug|x64.Build.0 = Debug|Any CPU
+		{61E2E16E-6FE1-41DA-BDFC-1C80B06D3FBF}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{61E2E16E-6FE1-41DA-BDFC-1C80B06D3FBF}.Debug|x86.Build.0 = Debug|Any CPU
+		{61E2E16E-6FE1-41DA-BDFC-1C80B06D3FBF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{61E2E16E-6FE1-41DA-BDFC-1C80B06D3FBF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{61E2E16E-6FE1-41DA-BDFC-1C80B06D3FBF}.Release|x64.ActiveCfg = Release|Any CPU
+		{61E2E16E-6FE1-41DA-BDFC-1C80B06D3FBF}.Release|x64.Build.0 = Release|Any CPU
+		{61E2E16E-6FE1-41DA-BDFC-1C80B06D3FBF}.Release|x86.ActiveCfg = Release|Any CPU
+		{61E2E16E-6FE1-41DA-BDFC-1C80B06D3FBF}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -274,5 +288,6 @@ Global
 		{6326C03E-784B-4164-B12D-0F0F1BE7BD6F} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{F63591BC-6950-4338-B0FC-FFFD86499761} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{C8277E1F-C0FF-4A2C-BBBF-779398725374} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{61E2E16E-6FE1-41DA-BDFC-1C80B06D3FBF} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

@@ -4,6 +4,9 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- MEAI001 and SUTANDO001 mark experimental local-inference surfaces. Tests need to
+         consume them without per-usage [SuppressMessage] attributes. -->
+    <NoWarn>$(NoWarn);MEAI001;SUTANDO001</NoWarn>
   </PropertyGroup>
 
   <!-- Multi-target on Windows so the Windows-only platform adapter (and its tests) compile against a
@@ -48,6 +51,7 @@
     <ProjectReference Include="..\..\src\Sutando.Channels.Discord\Sutando.Channels.Discord.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Realtime\Sutando.Realtime.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Skills\Sutando.Skills.csproj" />
+    <ProjectReference Include="..\..\src\Sutando.LocalInference.Abstractions\Sutando.LocalInference.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Api\Sutando.Api.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Dashboard\Sutando.Dashboard.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Voice\Sutando.Voice.csproj" />

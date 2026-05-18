@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Sutando.LocalInference</RootNamespace>
+    <PackageId>Sutando.LocalInference.Abstractions</PackageId>
+    <Title>Sutando — local-inference abstractions</Title>
+    <Description>Abstractions for the local-inference pipeline (VAD + audio-frame contracts). Chat / STT / TTS are taken from Microsoft.Extensions.AI directly; this project intentionally avoids duplicating those interfaces.</Description>
+
+    <!-- MEAI001 marks ISpeechToTextClient / ITextToSpeechClient / IRealtimeClient as
+         experimental APIs at MEAI 10.6. Whisper.net 1.9 already ships against them and
+         the ecosystem is converging. Suppress at the project level so the convention
+         is documented in one place; revisit when MEAI 11 ships and these go GA. -->
+    <NoWarn>$(NoWarn);MEAI001;SUTANDO001</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Abstractions only — we don't pull Microsoft.Extensions.AI (the higher-level
+         builder + middleware package) because consumers ref it directly when they need
+         the ChatClientBuilder stack. We only need IChatClient / ISpeechToTextClient /
+         ITextToSpeechClient signatures for the DI helper. -->
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="10.6.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
+  </ItemGroup>
+
+</Project>

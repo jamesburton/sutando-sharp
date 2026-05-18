@@ -6,9 +6,9 @@ alternative — every component swappable, every component runnable on-host or o
 another LAN machine — so an operator with the right hardware can run sutando
 without any external API key.
 
-> **Recon completed — see [`local-stack-scope.md`](local-stack-scope.md) for the answers
-> to every open question below.** The scope doc supersedes the speculation in this
-> plan where they conflict. Top-line corrections from recon:
+> **Two recon passes superseded this plan where they conflict — read them first:**
+> - [`local-stack-scope.md`](local-stack-scope.md) — quant variants, NuGet ecosystem, Pipecat vs port, Aspire vs compose.
+> - [`agent-framework-scope.md`](agent-framework-scope.md) — Microsoft.Extensions.AI 10.6 ships `ISpeechToTextClient`, `ITextToSpeechClient`, and `IRealtimeClient`. We adopt MEAI's types directly instead of defining `IChatCompletion` / `ISpeechToText` / `ITextToSpeech`. `Sutando.LocalInference.Abstractions` collapses to three files (`IVadDetector` + `VadEvent` + `AudioFrame`) — everything else is MEAI types. Top-line corrections from the first recon:
 >
 > - **"Turboquant" is a KV-cache technique, not a weight quant.** The actual weight-quant pick is
 >   `Qwen/Qwen3-8B-AWQ` (official, Apache 2.0) for HTTP serving, and `Qwen3-8B-GGUF` Q4_K_M
