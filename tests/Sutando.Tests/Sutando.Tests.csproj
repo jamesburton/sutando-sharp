@@ -23,6 +23,7 @@
     <ProjectReference Include="..\..\src\Sutando.Core\Sutando.Core.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Platform.Abstractions\Sutando.Platform.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Browser\Sutando.Browser.csproj" />
+    <ProjectReference Include="..\..\src\Sutando.Channels.Cli\Sutando.Channels.Cli.csproj" />
   </ItemGroup>
 
 </Project>

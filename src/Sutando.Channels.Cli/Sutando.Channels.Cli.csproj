@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Sutando.Channels.Cli</RootNamespace>
+    <PackageId>Sutando.Channels.Cli</PackageId>
+    <Title>Sutando — local CLI chat channel</Title>
+    <Description>A local interactive REPL channel that writes chat tasks into the workspace bridge and prints the matching results.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sutando.Workspace\Sutando.Workspace.csproj" />
+    <ProjectReference Include="..\Sutando.Bridge\Sutando.Bridge.csproj" />
+  </ItemGroup>
+
+</Project>
