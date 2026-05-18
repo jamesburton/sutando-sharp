@@ -31,6 +31,7 @@ try
         "status" => Commands.Status(args),
         "heartbeat" => await Commands.HeartbeatAsync(args).ConfigureAwait(false),
         "workspace" => Commands.WorkspaceInfo(),
+        "init" => await Commands.InitAsync(args).ConfigureAwait(false),
         "chat" => await Commands.ChatAsync(version, args).ConfigureAwait(false),
         "browser" => await Commands.BrowserAsync(args).ConfigureAwait(false),
         "telegram" => await Commands.TelegramAsync(args).ConfigureAwait(false),
@@ -64,6 +65,8 @@ static void PrintHelp(string version)
     Console.WriteLine("  hello [name]              Print a greeting (used to verify the dnx round-trip).");
     Console.WriteLine("  version                   Print the running version and exit.");
     Console.WriteLine("  workspace                 Print the resolved workspace directory and key paths.");
+    Console.WriteLine("  init [--yes] [--launch-dashboard]");
+    Console.WriteLine("                            Bootstrap a fresh workspace: create subdirs, write .env.example, probe prerequisites.");
     Console.WriteLine("  work <task>               Submit a chat-source task into the workspace bridge.");
     Console.WriteLine("  watch                     Watch tasks/ for new envelopes and print them as they arrive.");
     Console.WriteLine("  results tail              Tail results/ and print new entries.");

@@ -39,6 +39,21 @@ internal static class Commands
         return 0;
     }
 
+    public static async Task<int> InitAsync(string[] args)
+    {
+        var options = new WorkspaceInitializerOptions
+        {
+            AssumeYes = args.Contains("--yes") || args.Contains("-y"),
+            WriteHeartbeat = !args.Contains("--no-heartbeat"),
+            LaunchDashboard = args.Contains("--launch-dashboard"),
+        };
+
+        var initializer = new WorkspaceInitializer();
+        using var cts = NewSigIntCts();
+        var (exit, _) = await initializer.RunAsync(options, cts.Token).ConfigureAwait(false);
+        return exit;
+    }
+
     public static async Task<int> WorkAsync(string[] args)
     {
         if (args.Length < 2)
