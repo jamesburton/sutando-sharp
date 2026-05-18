@@ -42,6 +42,7 @@
     <ProjectReference Include="..\..\src\Sutando.Channels.Cli\Sutando.Channels.Cli.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Channels.Telegram\Sutando.Channels.Telegram.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Channels.Discord\Sutando.Channels.Discord.csproj" />
+    <ProjectReference Include="..\..\src\Sutando.Realtime\Sutando.Realtime.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Skills\Sutando.Skills.csproj" />
   </ItemGroup>
 
