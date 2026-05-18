@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <!-- WebApplicationFactory<Program> requires the assembly's entry-point to resolve to
+         our Program.Main. Without OutputType=Exe the project compiles as a library and the
+         test harness falls back to an empty host with no routes — every endpoint 404s. -->
+    <OutputType>Exe</OutputType>
+    <!-- Four projects in the solution now declare `partial class Program` (Api, Dashboard,
+         Voice, Phone). WebApplicationFactory's HostFactoryResolver disambiguates via
+         Assembly.EntryPoint, but explicit StartupObject pins the entry-point class
+         deterministically — without it, when all assemblies are loaded into the test
+         process, the resolver can route to the wrong Program.Main. -->
+    <StartupObject>Sutando.Phone.Program</StartupObject>
+    <RootNamespace>Sutando.Phone</RootNamespace>
+    <AssemblyName>Sutando.Phone</AssemblyName>
+    <PackageId>Sutando.Phone</PackageId>
+    <Title>Sutando — Twilio phone bridge</Title>
+    <Description>ASP.NET Core minimal-API host that bridges Twilio Voice (incoming + outgoing calls, Media Streams μ-law/8 kHz) to Gemini Live via Sutando.Realtime. Twilio webhooks land here; the per-call WebSocket runs a VoiceSession identical to the browser voice path.</Description>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- CA1515: ASP.NET Core needs Program to be public for WebApplicationFactory<Program>. -->
+    <NoWarn>$(NoWarn);CA1515</NoWarn>
+    <!-- The default ASP.NET Core Web SDK ships a wwwroot/ check that warns when missing.
+         The phone bridge has no static content; suppress the convention check. -->
+    <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Twilio gives us:
+         - Twilio.Security.RequestValidator for HMAC-SHA1 webhook signature validation.
+         - Twilio.Rest.Api.V2010.Account.CallResource for outbound REST call placement.
+         - TwiML helpers (Twilio.TwiML.VoiceResponse, Connect, Stream).
+         We deliberately do NOT take Twilio.AspNet.Core — its 8.x line targets net7–9 (not
+         net10 yet) and pulls FrameworkReference Microsoft.AspNetCore.App for HMAC plumbing
+         we don't need. RequestValidator is the only piece we use; calling it directly keeps
+         the dependency surface flat. -->
+    <PackageReference Include="Twilio" Version="7.14.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Bridge: AccessTier enum (tier policy) + TaskSource (when we wire task delegation later).
+         Realtime: VoiceSession + IRealtimeTransport (the per-call audio session).
+         Workspace: workspace path resolution + the data/ root for call metadata. -->
+    <ProjectReference Include="..\Sutando.Bridge\Sutando.Bridge.csproj" />
+    <ProjectReference Include="..\Sutando.Realtime\Sutando.Realtime.csproj" />
+    <ProjectReference Include="..\Sutando.Workspace\Sutando.Workspace.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sutando.Tests" />
+  </ItemGroup>
+
+</Project>

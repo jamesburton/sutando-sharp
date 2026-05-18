@@ -55,6 +55,9 @@
     <ProjectReference Include="..\..\src\Sutando.Api\Sutando.Api.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Dashboard\Sutando.Dashboard.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Voice\Sutando.Voice.csproj" />
+    <!-- Sutando.Phone is not yet in Sutando.sln (see Sutando.Phone/INTEGRATION-NOTES.md);
+         the transitive reference here keeps it on the dotnet build + test happy path. -->
+    <ProjectReference Include="..\..\src\Sutando.Phone\Sutando.Phone.csproj" />
   </ItemGroup>
 
   <!-- Windows-only project reference + test sources. Other TFMs simply don't see the files. -->
