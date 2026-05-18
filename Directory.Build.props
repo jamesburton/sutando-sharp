@@ -1,0 +1,41 @@
+<Project>
+
+  <PropertyGroup>
+    <!-- All projects target .NET 10 -->
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest</AnalysisLevel>
+
+    <!-- NuGet metadata shared across all packable projects.
+         Version is composed as VersionPrefix-VersionSuffix so each local pack gets a unique
+         prerelease tag — otherwise `dotnet dnx` caches the package and ignores rebuilt
+         content. CI builds can override VersionSuffix to embed the build number / SHA. -->
+    <VersionPrefix>0.1.0</VersionPrefix>
+    <VersionSuffix Condition="'$(VersionSuffix)' == ''">dev.$([System.DateTime]::UtcNow.ToString('yyyyMMddHHmmss'))</VersionSuffix>
+    <Authors>James Burton</Authors>
+    <Company>sutando-sharp contributors</Company>
+    <Product>Sutando</Product>
+    <Description>A .NET 10 port of sutando — a personal AI agent.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/jamesburton/sutando-sharp</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/jamesburton/sutando-sharp</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>sutando;agent;ai;voice;cli;dnx</PackageTags>
+    <PackageOutputPath>$(MSBuildThisFileDirectory)nuget-local</PackageOutputPath>
+
+    <!-- Deterministic builds + symbol packages -->
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)README.md')">
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
+
+</Project>

@@ -480,3 +480,20 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Sutando-specific
+nuget-local/
+.env
+.env.local
+
+# Sutando runtime workspace (when SUTANDO_WORKSPACE is repo-relative for local testing)
+/tasks/
+/results/
+/state/
+/logs/
+/notes/
+/data/
+/conversation.log
+/build_log.md
+/core-status.json
+

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Sutando.Cli</RootNamespace>
+    <AssemblyName>sutando</AssemblyName>
+
+    <!-- dnx-runnable tool -->
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>sutando</ToolCommandName>
+    <PackageId>Sutando.Cli</PackageId>
+    <Title>Sutando — personal AI agent CLI</Title>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sutando.Workspace\Sutando.Workspace.csproj" />
+    <ProjectReference Include="..\Sutando.Bridge\Sutando.Bridge.csproj" />
+  </ItemGroup>
+
+</Project>

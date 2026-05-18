@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Sutando.Bridge</RootNamespace>
+    <PackageId>Sutando.Bridge</PackageId>
+    <Title>Sutando — task/result file bridge</Title>
+    <Description>Task envelope schema, result-marker protocol, archive layout, and FileSystemWatcher-based dispatch for Sutando's task/results coordination.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sutando.Workspace\Sutando.Workspace.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+  </ItemGroup>
+
+</Project>

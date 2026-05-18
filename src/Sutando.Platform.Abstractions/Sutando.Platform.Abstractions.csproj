@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Sutando.Platform</RootNamespace>
+    <PackageId>Sutando.Platform.Abstractions</PackageId>
+    <Title>Sutando — platform-adapter contracts</Title>
+    <Description>Platform-agnostic interfaces for screen capture, notifications, clipboard, hotkeys, and process activation. Per-OS implementations ship as separate Sutando.Platform.* packages.</Description>
+  </PropertyGroup>
+
+</Project>
