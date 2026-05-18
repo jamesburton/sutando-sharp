@@ -27,6 +27,8 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.0.1" />
     <PackageReference Include="xunit.SkippableFact" Version="1.4.13" />
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <!-- Api / Dashboard / Voice tests stand their hosts up in-process via WebApplicationFactory.
+         SignalR.Client is for Dashboard hub round-trip tests. -->
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.0" />
   </ItemGroup>
@@ -48,6 +50,7 @@
     <ProjectReference Include="..\..\src\Sutando.Skills\Sutando.Skills.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Api\Sutando.Api.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Dashboard\Sutando.Dashboard.csproj" />
+    <ProjectReference Include="..\..\src\Sutando.Voice\Sutando.Voice.csproj" />
   </ItemGroup>
 
   <!-- Windows-only project reference + test sources. Other TFMs simply don't see the files. -->
