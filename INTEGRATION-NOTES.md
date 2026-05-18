@@ -31,11 +31,16 @@ No other `.csproj` reference graph changes.
 
 ## Commits
 
-Three commits in order:
+Four commits in order:
 
 1. `1bdee2c core: route tasks through SkillRegistry before the agent executor`
 2. `6137ca4 cli: add `sutando init` wizard for fresh-install ergonomics`
-3. (CI commit, applied next.)
+3. `acc51ef ci: cross-OS matrix hardening + integration notes`
+4. `8e3fad6 ci: use default TRX naming so per-TFM files don't collide`
+
+Commits 3 + 4 are the same logical deliverable (CI) — they could have been one commit
+amended, but a follow-up commit keeps the audit trail clean and avoids the global
+"prefer new commit over amend" convention.
 
 ## Test signal
 
