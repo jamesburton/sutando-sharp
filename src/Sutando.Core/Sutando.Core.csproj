@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Sutando.Core</RootNamespace>
+    <PackageId>Sutando.Core</PackageId>
+    <Title>Sutando — agent-executor abstraction and task orchestration</Title>
+    <Description>IAgentExecutor abstraction and TaskRunner orchestration: read tasks from the bridge, dispatch to the executor, write results, archive. Includes Claude CLI shell-out and Anthropic HTTP implementations.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sutando.Workspace\Sutando.Workspace.csproj" />
+    <ProjectReference Include="..\Sutando.Bridge\Sutando.Bridge.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
+  </ItemGroup>
+
+</Project>

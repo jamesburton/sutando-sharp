@@ -486,6 +486,9 @@ nuget-local/
 .env
 .env.local
 
+# Claude Code agent worktrees (created when dispatching parallel agents)
+.claude/
+
 # Sutando runtime workspace (when SUTANDO_WORKSPACE is repo-relative for local testing)
 /tasks/
 /results/

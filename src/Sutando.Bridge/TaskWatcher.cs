@@ -24,6 +24,7 @@ public sealed class TaskWatcher : IAsyncDisposable, IDisposable
 
     private FileSystemWatcher? _fsw;
     private Task? _rescanLoop;
+    private bool _disposed;
     private readonly HashSet<string> _seen = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _seenGate = new();
 
@@ -151,9 +152,11 @@ public sealed class TaskWatcher : IAsyncDisposable, IDisposable
 
     private static string NormalizeKey(string path) => Path.GetFullPath(path).ToLowerInvariant();
 
-    /// <summary>Stop watching and drain the channel.</summary>
+    /// <summary>Stop watching and drain the channel. Idempotent.</summary>
     public async ValueTask DisposeAsync()
     {
+        if (_disposed) { return; }
+        _disposed = true;
         _cts.Cancel();
         _fsw?.Dispose();
         _fsw = null;
@@ -166,9 +169,11 @@ public sealed class TaskWatcher : IAsyncDisposable, IDisposable
         _cts.Dispose();
     }
 
-    /// <summary>Sync disposal. See <see cref="DisposeAsync"/>.</summary>
+    /// <summary>Sync disposal. See <see cref="DisposeAsync"/>. Idempotent.</summary>
     public void Dispose()
     {
+        if (_disposed) { return; }
+        _disposed = true;
         _cts.Cancel();
         _fsw?.Dispose();
         _fsw = null;
