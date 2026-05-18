@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\src\Sutando.Bridge\Sutando.Bridge.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Core\Sutando.Core.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Platform.Abstractions\Sutando.Platform.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Sutando.Browser\Sutando.Browser.csproj" />
   </ItemGroup>
 
 </Project>
