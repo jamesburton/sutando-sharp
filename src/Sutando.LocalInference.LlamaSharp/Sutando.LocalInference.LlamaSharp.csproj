@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Sutando.LocalInference.LlamaSharp</RootNamespace>
+    <PackageId>Sutando.LocalInference.LlamaSharp</PackageId>
+    <Title>Sutando — LlamaSharp chat adapter</Title>
+    <Description>In-process chat / LLM adapter wrapping LlamaSharp's llama.cpp bindings behind Microsoft.Extensions.AI.IChatClient. Loads GGUF model files, supports Qwen3 / Llama / Mistral via the standard LlamaSharp executor stack.</Description>
+
+    <!-- MEAI001 covers IChatClient's tool-calling / streaming evolving surface;
+         SUTANDO001 marks our local-inference abstractions package. -->
+    <NoWarn>$(NoWarn);MEAI001;SUTANDO001</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sutando.LocalInference.Abstractions\Sutando.LocalInference.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- LlamaSharp 0.27 — Qwen3 support landed in 0.24, GGUF runtime is the model format
+         we use. AsChatClient() extension on ILLamaExecutor returns an IChatClient that we
+         delegate to from inside this wrapper. -->
+    <PackageReference Include="LLamaSharp" Version="0.27.0" />
+    <!-- CPU backend is the CI-portable default; consumers who want GPU acceleration swap this
+         out for LLamaSharp.Backend.Cuda12 / .Cuda11 / .Vulkan / .OpenCL at their own host level. -->
+    <PackageReference Include="LLamaSharp.Backend.Cpu" Version="0.27.0" />
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="10.6.0" />
+    <!-- LLamaSharp 0.27 transitively requires 10.0.5+ via Logging.Abstractions; force-bump
+         our direct reference so NU1605 doesn't fire on the downgrade. -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sutando.Tests" />
+  </ItemGroup>
+
+</Project>

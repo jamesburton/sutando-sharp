@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Sutando.LocalInference.Silero</RootNamespace>
+    <PackageId>Sutando.LocalInference.Silero</PackageId>
+    <Title>Sutando — Silero VAD adapter</Title>
+    <Description>In-process voice-activity-detection adapter implementing Sutando.LocalInference.IVadDetector via Silero's v5 ONNX VAD model. Runs through Microsoft.ML.OnnxRuntime on CPU; resamples / re-encodes inbound AudioFrames as needed to Silero's 16 kHz float32 input.</Description>
+
+    <!-- IVadDetector lives on the SUTANDO001 experimental track. -->
+    <NoWarn>$(NoWarn);SUTANDO001</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sutando.LocalInference.Abstractions\Sutando.LocalInference.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- ONNX Runtime CPU build — portable across Windows / macOS / Linux x64 + arm64. -->
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.20.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sutando.Tests" />
+  </ItemGroup>
+
+</Project>

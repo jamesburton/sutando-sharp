@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Sutando.LocalInference.WhisperNet</RootNamespace>
+    <PackageId>Sutando.LocalInference.WhisperNet</PackageId>
+    <Title>Sutando — Whisper.net STT adapter</Title>
+    <Description>In-process speech-to-text adapter for Sutando using Whisper.net's WhisperSpeechToTextClient (Microsoft.Extensions.AI.ISpeechToTextClient). DI helpers wire a singleton ISpeechToTextClient from a GGML model file on disk.</Description>
+
+    <!-- Whisper.net's WhisperSpeechToTextClient implements MEAI's experimental ISpeechToTextClient.
+         Suppress MEAI001 here so we can take the dependency without per-call warnings. SUTANDO001
+         covers the experimental marker on Sutando.LocalInference.Abstractions' own surfaces. -->
+    <NoWarn>$(NoWarn);MEAI001;SUTANDO001</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sutando.LocalInference.Abstractions\Sutando.LocalInference.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Whisper.net 1.9.0 — ships WhisperSpeechToTextClient. We pin the major.minor to match the
+         abstractions project's MEAI 10.6 pin; transitive resolution will harmonise to 10.6. -->
+    <PackageReference Include="Whisper.net" Version="1.9.0" />
+    <!-- The Whisper.net runtime backend. CPU is the portable default; CoreML / CUDA / OpenVino
+         variants are pulled in instead by consumers that want hardware acceleration. -->
+    <PackageReference Include="Whisper.net.Runtime" Version="1.9.0" />
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="10.6.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sutando.Tests" />
+  </ItemGroup>
+
+</Project>
