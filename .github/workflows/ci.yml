@@ -61,11 +61,11 @@ jobs:
         run: ./src/Sutando.Browser/bin/Release/net10.0/playwright.ps1 install chromium
 
       # `dotnet test` on the .sln picks up the Tests project's conditional TFM list — net10.0
-      # everywhere plus net10.0-windows10.0.19041.0 only on Windows runners. We embed
-      # $(TargetFramework) in the TRX filename so the artifact upload below sees both files
-      # on Windows without collision.
+      # everywhere plus net10.0-windows10.0.19041.0 only on Windows runners. The default
+      # TRX logger emits filenames like `<user>_<host>_<datetime>_<framework>.trx`, so the
+      # two TFMs on Windows produce non-colliding files without any custom naming.
       - name: Test
-        run: dotnet test Sutando.sln -c Release --no-build --logger "trx;LogFileName=test-results-$(TargetFramework).trx"
+        run: dotnet test Sutando.sln -c Release --no-build --logger trx --results-directory TestResults
 
       # Packing + dnx smoke test only run on Windows. The Cli ships as a single canonical
       # nupkg from one OS; the dnx round-trip on the other runners would only re-test the
@@ -87,7 +87,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ matrix.os }}
-          path: "**/test-results-*.trx"
+          path: TestResults/*.trx
 
       - name: Upload nuget packages (windows only — single canonical copy)
         if: matrix.os == 'windows-latest'
