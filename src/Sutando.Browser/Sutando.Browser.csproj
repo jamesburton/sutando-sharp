@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Sutando.Browser</RootNamespace>
+    <PackageId>Sutando.Browser</PackageId>
+    <Title>Sutando — Playwright-based browser automation</Title>
+    <Description>Lightweight Playwright wrapper that mirrors the upstream Sutando browser action grammar (text, screenshot, pdf, html, click, fill, select, wait) for the .NET port.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Playwright" Version="1.59.0" />
+  </ItemGroup>
+
+</Project>
