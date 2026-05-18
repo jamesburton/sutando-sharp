@@ -1,5 +1,8 @@
+using System.Diagnostics;
 using Sutando.Bridge;
 using Sutando.Core;
+using Sutando.Skills;
+using Sutando.Skills.Builtin;
 using Sutando.Workspace;
 
 namespace Sutando.Tests.Executors;
@@ -120,6 +123,78 @@ public sealed class TaskRunnerTests : IDisposable
         }
 
         Assert.NotNull(new TaskArchive(_workspace).FindArchivedTask("task-runner-e2e"));
+    }
+
+    [Fact]
+    public async Task ProcessAsync_WhenSkillMatchesTrigger_SkillHandlesAndExecutorIsBypassed()
+    {
+        // The executor is wired to throw so the test fails loudly if skill routing falls through
+        // to the agent executor unexpectedly.
+        var executor = new FakeExecutor(_ => throw new InvalidOperationException(
+            "executor must NOT be called when a skill claims the task"));
+        var registry = new SkillRegistry();
+        registry.RegisterInstance(new EchoSkill());
+
+        await using var runner = new TaskRunner(_workspace, executor, skills: registry);
+
+        // First whitespace-delimited token is "echo" — the EchoSkill claims that trigger.
+        var envelope = NewEnvelope("task-skill-hit", body: "echo hello world");
+        TaskFile.Write(_workspace.Tasks.FullName, envelope);
+
+        await runner.ProcessAsync(envelope, CancellationToken.None);
+
+        var archived = new DirectoryInfo(Path.Combine(_workspace.Results.FullName, "archive"))
+            .EnumerateFiles("task-skill-hit.txt", SearchOption.AllDirectories)
+            .Single();
+        var parsed = ResultBody.Parse(File.ReadAllText(archived.FullName));
+
+        // EchoSkill prefixes "echo: " and serialises k=v of every arg supplied by the runner.
+        Assert.StartsWith("echo: ", parsed.Text);
+        Assert.Contains("task_id=task-skill-hit", parsed.Text);
+        Assert.Contains("body=echo hello world", parsed.Text);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_WhenNoSkillMatches_ExecutorRunsAsBefore()
+    {
+        var executorCalled = false;
+        var executor = new FakeExecutor(env =>
+        {
+            executorCalled = true;
+            return AgentResult.Ok("agent ran " + env.Id, TimeSpan.FromMilliseconds(7));
+        });
+        // Registry is supplied but only knows "echo" / "ping"; the task's trigger is "unknown-verb".
+        var registry = new SkillRegistry();
+        registry.RegisterInstance(new EchoSkill());
+
+        await using var runner = new TaskRunner(_workspace, executor, skills: registry);
+
+        var envelope = NewEnvelope("task-skill-miss", body: "unknown-verb please do something");
+        TaskFile.Write(_workspace.Tasks.FullName, envelope);
+
+        await runner.ProcessAsync(envelope, CancellationToken.None);
+
+        Assert.True(executorCalled, "executor must run when no skill claims the trigger");
+
+        var archived = new DirectoryInfo(Path.Combine(_workspace.Results.FullName, "archive"))
+            .EnumerateFiles("task-skill-miss.txt", SearchOption.AllDirectories)
+            .Single();
+        var parsed = ResultBody.Parse(File.ReadAllText(archived.FullName));
+        Assert.Equal("agent ran task-skill-miss", parsed.Text);
+    }
+
+    [Theory]
+    [InlineData("echo hello", "echo")]
+    [InlineData("  echo hello", "echo")]
+    [InlineData("ECHO HELLO", "echo")]
+    [InlineData("echo\nthen more", "echo")]
+    [InlineData("echo\tthen more", "echo")]
+    [InlineData("", null)]
+    [InlineData("   ", null)]
+    [InlineData("ONE_WORD", "one_word")]
+    public void ExtractTrigger_HandlesEdgeCases(string body, string? expected)
+    {
+        Assert.Equal(expected, TaskRunner.ExtractTrigger(body));
     }
 
     private static TaskEnvelope NewEnvelope(string id, string body) => new()

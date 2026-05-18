@@ -10,6 +10,10 @@
   <ItemGroup>
     <ProjectReference Include="..\Sutando.Workspace\Sutando.Workspace.csproj" />
     <ProjectReference Include="..\Sutando.Bridge\Sutando.Bridge.csproj" />
+    <!-- Skills runtime is referenced so TaskRunner can optionally dispatch tasks to a SkillRegistry
+         before falling through to the agent executor. The registry parameter is optional —
+         callers that don't supply one get unchanged executor-only behaviour. -->
+    <ProjectReference Include="..\Sutando.Skills\Sutando.Skills.csproj" />
   </ItemGroup>
 
   <ItemGroup>
