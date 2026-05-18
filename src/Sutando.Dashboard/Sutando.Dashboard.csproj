@@ -1,6 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
+    <!-- WebApplicationFactory<Program> requires the assembly's entry-point to resolve to
+         our Program.Main. Without OutputType=Exe the project compiles as a library and the
+         test harness falls back to an empty host with no routes — every endpoint 404s. -->
+    <OutputType>Exe</OutputType>
+    <!-- See Sutando.Api.csproj for the rationale. -->
+    <StartupObject>Sutando.Dashboard.Program</StartupObject>
     <RootNamespace>Sutando.Dashboard</RootNamespace>
     <AssemblyName>Sutando.Dashboard</AssemblyName>
     <PackageId>Sutando.Dashboard</PackageId>

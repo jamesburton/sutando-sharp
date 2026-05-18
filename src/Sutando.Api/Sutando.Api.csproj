@@ -1,6 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
+    <!-- WebApplicationFactory<Program> requires the assembly's entry-point to resolve to
+         our Program.Main. Without OutputType=Exe the project compiles as a library and the
+         test harness falls back to an empty host with no routes — every endpoint 404s. -->
+    <OutputType>Exe</OutputType>
+    <!-- Three projects in the solution declare `partial class Program`. WebApplicationFactory's
+         HostFactoryResolver disambiguates via Assembly.EntryPoint, but explicit StartupObject
+         pins the entry-point class deterministically — without it, when all three assemblies
+         are loaded into the test process, the resolver can route to the wrong Program.Main. -->
+    <StartupObject>Sutando.Api.Program</StartupObject>
     <RootNamespace>Sutando.Api</RootNamespace>
     <AssemblyName>Sutando.Api</AssemblyName>
     <PackageId>Sutando.Api</PackageId>

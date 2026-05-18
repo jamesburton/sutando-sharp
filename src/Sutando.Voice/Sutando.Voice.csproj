@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <!-- See Sutando.Api.csproj for the rationale. -->
+    <StartupObject>Sutando.Voice.Program</StartupObject>
     <RootNamespace>Sutando.Voice</RootNamespace>
     <PackageId>Sutando.Voice</PackageId>
     <Title>Sutando — voice WebSocket fan-out server</Title>

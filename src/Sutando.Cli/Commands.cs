@@ -1,10 +1,13 @@
 using System.Globalization;
 using System.Text.Json;
+using Sutando.Api;
 using Sutando.Bridge;
 using Sutando.Browser;
 using Sutando.Channels.Cli;
 using Sutando.Channels.Discord;
 using Sutando.Channels.Telegram;
+using Sutando.Dashboard;
+using Sutando.Voice;
 using Sutando.Workspace;
 
 namespace Sutando.Cli;
@@ -255,6 +258,30 @@ internal static class Commands
         Console.WriteLine($"sutando telegram: starting (owner={options.OwnerUserId}, verified={options.VerifiedUserIds.Count}, team={options.TeamUserIds.Count}). Ctrl+C to stop.");
         await channel.RunAsync(cts.Token).ConfigureAwait(false);
         return 0;
+    }
+
+    public static async Task<int> ApiAsync(string[] args)
+    {
+        // Drop the leading "api" verb before forwarding to the host shim.
+        var forwarded = args.Length > 1 ? args[1..] : [];
+        using var cts = NewSigIntCts();
+        await ApiCommand.RunAsync(forwarded, cts.Token).ConfigureAwait(false);
+        return 0;
+    }
+
+    public static async Task<int> DashboardAsync(string[] args)
+    {
+        var forwarded = args.Length > 1 ? args[1..] : [];
+        using var cts = NewSigIntCts();
+        await DashboardCommand.RunAsync(forwarded, cts.Token).ConfigureAwait(false);
+        return 0;
+    }
+
+    public static async Task<int> VoiceAsync(string[] args)
+    {
+        var forwarded = args.Length > 1 ? args[1..] : [];
+        using var cts = NewSigIntCts();
+        return await VoiceCommand.RunAsync(forwarded, cts.Token).ConfigureAwait(false);
     }
 
     public static async Task<int> DiscordAsync(string[] args)

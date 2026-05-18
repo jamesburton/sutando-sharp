@@ -35,6 +35,9 @@ try
         "browser" => await Commands.BrowserAsync(args).ConfigureAwait(false),
         "telegram" => await Commands.TelegramAsync(args).ConfigureAwait(false),
         "discord" => await Commands.DiscordAsync(args).ConfigureAwait(false),
+        "voice" => await Commands.VoiceAsync(args).ConfigureAwait(false),
+        "api" => await Commands.ApiAsync(args).ConfigureAwait(false),
+        "dashboard" => await Commands.DashboardAsync(args).ConfigureAwait(false),
         _ => Unknown(args[0]),
     };
 }
@@ -68,6 +71,9 @@ static void PrintHelp(string version)
     Console.WriteLine("  browser <url> [actions]   Drive a Playwright browser session (navigate, click, fill, screenshot, ...).");
     Console.WriteLine("  telegram                  Run the Telegram channel (reads TELEGRAM_BOT_TOKEN + allow-lists from env).");
     Console.WriteLine("  discord                   Run the Discord channel (reads DISCORD_BOT_TOKEN + allow-lists from env).");
+    Console.WriteLine("  voice                     Run the voice WebSocket server on :9900 (needs GEMINI_VOICE_API_KEY or GEMINI_API_KEY).");
+    Console.WriteLine("  api                       Run the HTTP task-submission API on :7843 (bearer auth via SUTANDO_API_TOKEN).");
+    Console.WriteLine("  dashboard                 Run the read-only status dashboard on :7844 (SignalR live updates).");
     Console.WriteLine("  status [--watch]          Show the current core-status.json signal.");
     Console.WriteLine("  heartbeat [--start]       Write a single heartbeat (or run the loop until Ctrl+C).");
     Console.WriteLine("  help                      Show this message.");
