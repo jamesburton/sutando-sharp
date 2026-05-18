@@ -33,6 +33,8 @@ try
         "workspace" => Commands.WorkspaceInfo(),
         "chat" => await Commands.ChatAsync(version, args).ConfigureAwait(false),
         "browser" => await Commands.BrowserAsync(args).ConfigureAwait(false),
+        "telegram" => await Commands.TelegramAsync(args).ConfigureAwait(false),
+        "discord" => await Commands.DiscordAsync(args).ConfigureAwait(false),
         _ => Unknown(args[0]),
     };
 }
@@ -64,6 +66,8 @@ static void PrintHelp(string version)
     Console.WriteLine("  results tail              Tail results/ and print new entries.");
     Console.WriteLine("  chat [--timeout <s>]      Interactive REPL: send chat tasks and wait for results.");
     Console.WriteLine("  browser <url> [actions]   Drive a Playwright browser session (navigate, click, fill, screenshot, ...).");
+    Console.WriteLine("  telegram                  Run the Telegram channel (reads TELEGRAM_BOT_TOKEN + allow-lists from env).");
+    Console.WriteLine("  discord                   Run the Discord channel (reads DISCORD_BOT_TOKEN + allow-lists from env).");
     Console.WriteLine("  status [--watch]          Show the current core-status.json signal.");
     Console.WriteLine("  heartbeat [--start]       Write a single heartbeat (or run the loop until Ctrl+C).");
     Console.WriteLine("  help                      Show this message.");

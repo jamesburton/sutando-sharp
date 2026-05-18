@@ -22,6 +22,8 @@
     <ProjectReference Include="..\Sutando.Bridge\Sutando.Bridge.csproj" />
     <ProjectReference Include="..\Sutando.Browser\Sutando.Browser.csproj" />
     <ProjectReference Include="..\Sutando.Channels.Cli\Sutando.Channels.Cli.csproj" />
+    <ProjectReference Include="..\Sutando.Channels.Telegram\Sutando.Channels.Telegram.csproj" />
+    <ProjectReference Include="..\Sutando.Channels.Discord\Sutando.Channels.Discord.csproj" />
   </ItemGroup>
 
 </Project>

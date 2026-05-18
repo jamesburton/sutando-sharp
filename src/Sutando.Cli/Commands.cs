@@ -3,6 +3,8 @@ using System.Text.Json;
 using Sutando.Bridge;
 using Sutando.Browser;
 using Sutando.Channels.Cli;
+using Sutando.Channels.Discord;
+using Sutando.Channels.Telegram;
 using Sutando.Workspace;
 
 namespace Sutando.Cli;
@@ -229,6 +231,80 @@ internal static class Commands
         var forwarded = args.Length > 1 ? args[1..] : [];
         using var cts = NewSigIntCts();
         return await BrowserCommand.RunAsync(forwarded, options: null, ct: cts.Token).ConfigureAwait(false);
+    }
+
+    public static async Task<int> TelegramAsync(string[] args)
+    {
+        _ = args;
+        var token = Environment.GetEnvironmentVariable("TELEGRAM_BOT_TOKEN");
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            Console.Error.WriteLine("sutando telegram: TELEGRAM_BOT_TOKEN env var is required.");
+            return 64;
+        }
+        var options = new TelegramChannelOptions
+        {
+            BotToken = token,
+            OwnerUserId = ParseLong(Environment.GetEnvironmentVariable("TELEGRAM_OWNER_USER_ID")),
+            VerifiedUserIds = ParseLongList(Environment.GetEnvironmentVariable("TELEGRAM_VERIFIED_USER_IDS")),
+            TeamUserIds = ParseLongList(Environment.GetEnvironmentVariable("TELEGRAM_TEAM_USER_IDS")),
+        };
+        var ws = WorkspaceDirectory.Resolve();
+        var channel = new TelegramChannel(ws, options);
+        using var cts = NewSigIntCts();
+        Console.WriteLine($"sutando telegram: starting (owner={options.OwnerUserId}, verified={options.VerifiedUserIds.Count}, team={options.TeamUserIds.Count}). Ctrl+C to stop.");
+        await channel.RunAsync(cts.Token).ConfigureAwait(false);
+        return 0;
+    }
+
+    public static async Task<int> DiscordAsync(string[] args)
+    {
+        _ = args;
+        var token = Environment.GetEnvironmentVariable("DISCORD_BOT_TOKEN");
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            Console.Error.WriteLine("sutando discord: DISCORD_BOT_TOKEN env var is required.");
+            return 64;
+        }
+        var options = new DiscordChannelOptions
+        {
+            BotToken = token,
+            OwnerUserId = ParseUlong(Environment.GetEnvironmentVariable("DISCORD_OWNER_USER_ID")),
+            TeamRoleIds = ParseUlongList(Environment.GetEnvironmentVariable("DISCORD_TEAM_ROLE_IDS")),
+            AllowedChannelIds = ParseUlongList(Environment.GetEnvironmentVariable("DISCORD_ALLOWED_CHANNEL_IDS")),
+        };
+        var ws = WorkspaceDirectory.Resolve();
+        var channel = new DiscordChannel(ws, options);
+        using var cts = NewSigIntCts();
+        Console.WriteLine($"sutando discord: starting (owner={options.OwnerUserId}, team-roles={options.TeamRoleIds.Count}, channels={options.AllowedChannelIds.Count}). Ctrl+C to stop.");
+        await channel.RunAsync(cts.Token).ConfigureAwait(false);
+        return 0;
+    }
+
+    private static long? ParseLong(string? raw) =>
+        long.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : null;
+
+    private static ulong? ParseUlong(string? raw) =>
+        ulong.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : null;
+
+    private static IReadOnlyList<long> ParseLongList(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) { return []; }
+        return raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(s => ParseLong(s))
+            .Where(v => v is not null)
+            .Select(v => v!.Value)
+            .ToArray();
+    }
+
+    private static IReadOnlyList<ulong> ParseUlongList(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) { return []; }
+        return raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(s => ParseUlong(s))
+            .Where(v => v is not null)
+            .Select(v => v!.Value)
+            .ToArray();
     }
 
     private static CancellationTokenSource NewSigIntCts()
