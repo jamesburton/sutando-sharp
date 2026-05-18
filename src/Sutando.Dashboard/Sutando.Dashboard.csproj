@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>Sutando.Dashboard</RootNamespace>
+    <AssemblyName>Sutando.Dashboard</AssemblyName>
+    <PackageId>Sutando.Dashboard</PackageId>
+    <Title>Sutando — read-only status dashboard</Title>
+    <Description>An ASP.NET Core minimal API + SignalR status dashboard for the Sutando workspace.</Description>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- CA1515: ASP.NET Core needs Program to be public for WebApplicationFactory<Program>. -->
+    <NoWarn>$(NoWarn);CA1515</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sutando.Bridge\Sutando.Bridge.csproj" />
+    <ProjectReference Include="..\Sutando.Workspace\Sutando.Workspace.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sutando.Tests" />
+  </ItemGroup>
+
+</Project>

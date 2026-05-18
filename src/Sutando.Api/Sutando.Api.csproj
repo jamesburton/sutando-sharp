@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>Sutando.Api</RootNamespace>
+    <AssemblyName>Sutando.Api</AssemblyName>
+    <PackageId>Sutando.Api</PackageId>
+    <Title>Sutando — HTTP task submission API</Title>
+    <Description>An ASP.NET Core minimal API that accepts task submissions over HTTP and returns status / results to remote callers.</Description>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- CA1515: ASP.NET Core needs Program to be public for WebApplicationFactory<Program>. -->
+    <NoWarn>$(NoWarn);CA1515</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sutando.Bridge\Sutando.Bridge.csproj" />
+    <ProjectReference Include="..\Sutando.Workspace\Sutando.Workspace.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sutando.Tests" />
+  </ItemGroup>
+
+</Project>
