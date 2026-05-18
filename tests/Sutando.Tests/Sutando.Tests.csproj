@@ -27,6 +27,8 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.0.1" />
     <PackageReference Include="xunit.SkippableFact" Version="1.4.13" />
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -44,6 +46,8 @@
     <ProjectReference Include="..\..\src\Sutando.Channels.Discord\Sutando.Channels.Discord.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Realtime\Sutando.Realtime.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Skills\Sutando.Skills.csproj" />
+    <ProjectReference Include="..\..\src\Sutando.Api\Sutando.Api.csproj" />
+    <ProjectReference Include="..\..\src\Sutando.Dashboard\Sutando.Dashboard.csproj" />
   </ItemGroup>
 
   <!-- Windows-only project reference + test sources. Other TFMs simply don't see the files. -->
