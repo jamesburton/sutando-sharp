@@ -31,6 +31,8 @@ try
         "status" => Commands.Status(args),
         "heartbeat" => await Commands.HeartbeatAsync(args).ConfigureAwait(false),
         "workspace" => Commands.WorkspaceInfo(),
+        "chat" => await Commands.ChatAsync(version, args).ConfigureAwait(false),
+        "browser" => await Commands.BrowserAsync(args).ConfigureAwait(false),
         _ => Unknown(args[0]),
     };
 }
@@ -60,6 +62,8 @@ static void PrintHelp(string version)
     Console.WriteLine("  work <task>               Submit a chat-source task into the workspace bridge.");
     Console.WriteLine("  watch                     Watch tasks/ for new envelopes and print them as they arrive.");
     Console.WriteLine("  results tail              Tail results/ and print new entries.");
+    Console.WriteLine("  chat [--timeout <s>]      Interactive REPL: send chat tasks and wait for results.");
+    Console.WriteLine("  browser <url> [actions]   Drive a Playwright browser session (navigate, click, fill, screenshot, ...).");
     Console.WriteLine("  status [--watch]          Show the current core-status.json signal.");
     Console.WriteLine("  heartbeat [--start]       Write a single heartbeat (or run the loop until Ctrl+C).");
     Console.WriteLine("  help                      Show this message.");

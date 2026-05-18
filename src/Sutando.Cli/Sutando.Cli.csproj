@@ -10,11 +10,18 @@
     <ToolCommandName>sutando</ToolCommandName>
     <PackageId>Sutando.Cli</PackageId>
     <Title>Sutando — personal AI agent CLI</Title>
+
+    <!-- NU5111: Playwright ships .ps1 bootstrap scripts under tools/ that NuGet's tool-package
+         convention doesn't auto-execute. They're still copied into the published tool layout,
+         which is what we need to bootstrap browsers on first run. The warning is informational. -->
+    <NoWarn>$(NoWarn);NU5111</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Sutando.Workspace\Sutando.Workspace.csproj" />
     <ProjectReference Include="..\Sutando.Bridge\Sutando.Bridge.csproj" />
+    <ProjectReference Include="..\Sutando.Browser\Sutando.Browser.csproj" />
+    <ProjectReference Include="..\Sutando.Channels.Cli\Sutando.Channels.Cli.csproj" />
   </ItemGroup>
 
 </Project>

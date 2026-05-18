@@ -1,5 +1,8 @@
+using System.Globalization;
 using System.Text.Json;
 using Sutando.Bridge;
+using Sutando.Browser;
+using Sutando.Channels.Cli;
 using Sutando.Workspace;
 
 namespace Sutando.Cli;
@@ -191,6 +194,41 @@ internal static class Commands
             // expected
         }
         return 0;
+    }
+
+    public static async Task<int> ChatAsync(string version, string[] args)
+    {
+        var ws = WorkspaceDirectory.Resolve();
+
+        // --timeout <seconds> overrides the default 5-minute result wait.
+        var timeout = TimeSpan.FromMinutes(5);
+        for (var i = 1; i < args.Length - 1; i++)
+        {
+            if (args[i] == "--timeout"
+                && double.TryParse(args[i + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out var secs)
+                && secs > 0)
+            {
+                timeout = TimeSpan.FromSeconds(secs);
+                break;
+            }
+        }
+
+        var channel = new CliChatChannel(ws, new CliChatChannelOptions
+        {
+            Version = version,
+            ResultTimeout = timeout,
+        });
+        using var cts = NewSigIntCts();
+        await channel.RunAsync(cts.Token).ConfigureAwait(false);
+        return 0;
+    }
+
+    public static async Task<int> BrowserAsync(string[] args)
+    {
+        // Drop the leading "browser" verb before forwarding to the shim.
+        var forwarded = args.Length > 1 ? args[1..] : [];
+        using var cts = NewSigIntCts();
+        return await BrowserCommand.RunAsync(forwarded, options: null, ct: cts.Token).ConfigureAwait(false);
     }
 
     private static CancellationTokenSource NewSigIntCts()
