@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Sutando.LocalInference.OpenAI</RootNamespace>
+    <PackageId>Sutando.LocalInference.OpenAI</PackageId>
+    <Title>Sutando — OpenAI-compatible local-inference adapters</Title>
+    <Description>HTTP adapters for the local-inference pipeline against any OpenAI-compatible endpoint: vLLM / llama-server / LM Studio / SGLang / TGI for chat; speaches (faster-whisper-server) for STT; kokoro-fastapi for TTS. Built on Microsoft.Extensions.AI.OpenAI's IChatClient / ISpeechToTextClient / ITextToSpeechClient wrappers.</Description>
+
+    <!-- MEAI001 marks the experimental STT / TTS surfaces. We're knowingly building on
+         those; one suppression at the project level documents the choice. -->
+    <NoWarn>$(NoWarn);MEAI001;SUTANDO001</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sutando.LocalInference.Abstractions\Sutando.LocalInference.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- MEAI.OpenAI ships extension methods that turn an OpenAIClient into an IChatClient /
+         ISpeechToTextClient / ITextToSpeechClient. Every OpenAI-shaped endpoint (vLLM,
+         llama-server, LM Studio, speaches, kokoro-fastapi, …) speaks this protocol, so a
+         single client family covers every HTTP deployment mode. -->
+    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.6.0" />
+    <!-- 10.0.3 floor matches the transitive constraint MEAI.OpenAI brings in via
+         OpenAI → System.ClientModel → Microsoft.Extensions.Hosting.Abstractions. Without
+         the explicit pin, NU1605 downgrade warnings escalate to errors at restore. -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.3" />
+  </ItemGroup>
+
+</Project>

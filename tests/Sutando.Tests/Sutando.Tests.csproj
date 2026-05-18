@@ -56,6 +56,7 @@
     <ProjectReference Include="..\..\src\Sutando.LocalInference.KokoroSharp\Sutando.LocalInference.KokoroSharp.csproj" />
     <ProjectReference Include="..\..\src\Sutando.LocalInference.LlamaSharp\Sutando.LocalInference.LlamaSharp.csproj" />
     <ProjectReference Include="..\..\src\Sutando.LocalInference.Silero\Sutando.LocalInference.Silero.csproj" />
+    <ProjectReference Include="..\..\src\Sutando.LocalInference.OpenAI\Sutando.LocalInference.OpenAI.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Api\Sutando.Api.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Dashboard\Sutando.Dashboard.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Voice\Sutando.Voice.csproj" />
