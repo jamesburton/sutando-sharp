@@ -128,3 +128,49 @@ Plus a help-banner line:
 ```
 chat [--timeout <s>]      Interactive REPL: send chat tasks and wait for results.
 ```
+
+---
+
+## Sutando.Platform.Windows — integration notes
+
+New project at `src/Sutando.Platform.Windows/Sutando.Platform.Windows.csproj`.
+
+- TFM `net10.0-windows10.0.19041.0` (overrides repo-wide `net10.0`).
+- Restores on non-Windows machines via `<EnableWindowsTargeting>true</EnableWindowsTargeting>`; will not *build* off-Windows.
+- Public types are `[SupportedOSPlatform("windows")]`.
+- New package references:
+  - `System.Drawing.Common` 9.0.0 — BitBlt-driven screen capture.
+  - `Microsoft.Toolkit.Uwp.Notifications` 7.1.3 — toast notifications without WindowsAppSDK / WinUI3.
+
+### 1. Add to `Sutando.sln`
+
+```pwsh
+dotnet sln Sutando.sln add src/Sutando.Platform.Windows/Sutando.Platform.Windows.csproj --solution-folder src
+```
+
+If we want cross-platform CI to skip *compiling* the Windows project but still
+restore the .sln, hand-edit the resulting `ProjectConfigurationPlatforms`
+section to drop `.Build.0` lines for non-Windows runners. The
+`EnableWindowsTargeting` property already covers restore on its own.
+
+### 2. `Sutando.Tests.csproj` multi-targeting
+
+The Windows agent reshaped `tests/Sutando.Tests/Sutando.Tests.csproj` so the
+test assembly multi-targets `net10.0` plus `net10.0-windows10.0.19041.0` on
+Windows hosts. The csproj clears `Directory.Build.props`'s default
+`<TargetFramework>` before re-assigning it conditionally.
+
+Windows-specific test sources live in `tests/Sutando.Tests/Platform/Windows/`
+and are excluded from the non-Windows TFM via `<Compile Remove="Platform\Windows\**\*.cs" />`.
+
+### Caveats
+
+- The hotkey service spins up a dedicated message-pump thread per service
+  instance — disposing the service joins that thread with a 5-second timeout.
+  Hosts should `Dispose()` the adapter on shutdown.
+- Toast notifications go through `Microsoft.Toolkit.Uwp.Notifications`, which
+  is in maintenance mode. If/when `CommunityToolkit.WinUI.Notifications`
+  stabilises without dragging in WindowsAppSDK, swap the package.
+- Screen capture currently uses GDI. Switching to `Windows.Graphics.Capture`
+  requires a D3D11 device + WinRT interop — deferred until a real use case
+  demands DWM-accurate captures of hardware-accelerated windows.

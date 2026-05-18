@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- net10.0-windows10.0.19041.0 unlocks WinRT interop surface if we ever flip
+         screen capture to Windows.Graphics.Capture. The 19041 SDK is present on every
+         supported Win10/11 build, so this is a safe floor. -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+
+    <!-- We're a managed library — no WinForms / WPF pull-in needed. -->
+    <UseWindowsForms>false</UseWindowsForms>
+    <UseWPF>false</UseWPF>
+
+    <!-- Allow restore (not build) on Linux/Mac CI so the rest of the solution stays green. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+
+    <!-- LibraryImport's source generator emits marshalling stubs that use pointer / stackalloc
+         operations and therefore require unsafe blocks. We don't write unsafe code ourselves;
+         this flag only unlocks the generated interop helpers. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <RootNamespace>Sutando.Platform.Windows</RootNamespace>
+    <PackageId>Sutando.Platform.Windows</PackageId>
+    <Title>Sutando — Windows platform adapter</Title>
+    <Description>Windows-specific implementations of Sutando's platform-adapter contracts: GDI screen capture, toast notifications, Win32 clipboard, and global hotkey registration.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sutando.Platform.Abstractions\Sutando.Platform.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- System.Drawing.Common is unbundled since .NET 6 and only supported on Windows;
+         we keep all uses inside [SupportedOSPlatform("windows")] types. -->
+    <PackageReference Include="System.Drawing.Common" Version="9.0.0" />
+
+    <!-- Microsoft.Toolkit.Uwp.Notifications drives WinRT toast XML without requiring the
+         heavier WindowsAppSDK / WinUI3 stack. The package is in maintenance but is the
+         current low-friction path for toast notifications from a non-packaged process. -->
+    <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.1.3" />
+  </ItemGroup>
+
+</Project>

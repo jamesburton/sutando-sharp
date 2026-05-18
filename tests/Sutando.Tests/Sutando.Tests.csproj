@@ -6,6 +6,21 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
 
+  <!-- Multi-target on Windows so the Windows-only platform adapter (and its tests) compile against a
+       Windows TFM, while cross-platform tests stay on net10.0. On non-Windows hosts we collapse to a
+       single net10.0 target so the test assembly continues to restore + build everywhere.
+       NOTE: Directory.Build.props sets a default <TargetFramework>; we clear it so the conditional
+       <TargetFrameworks> below can take effect on Windows. -->
+  <PropertyGroup>
+    <TargetFramework></TargetFramework>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(OS)' != 'Windows_NT'">
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+    <TargetFrameworks>net10.0;net10.0-windows10.0.19041.0</TargetFrameworks>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
@@ -24,6 +39,15 @@
     <ProjectReference Include="..\..\src\Sutando.Platform.Abstractions\Sutando.Platform.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Browser\Sutando.Browser.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Channels.Cli\Sutando.Channels.Cli.csproj" />
+  </ItemGroup>
+
+  <!-- Windows-only project reference + test sources. Other TFMs simply don't see the files. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-windows10.0.19041.0'">
+    <ProjectReference Include="..\..\src\Sutando.Platform.Windows\Sutando.Platform.Windows.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' != 'net10.0-windows10.0.19041.0'">
+    <Compile Remove="Platform\Windows\**\*.cs" />
   </ItemGroup>
 
 </Project>
