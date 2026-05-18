@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Sutando.LocalInference.KokoroSharp</RootNamespace>
+    <PackageId>Sutando.LocalInference.KokoroSharp</PackageId>
+    <Title>Sutando — KokoroSharp TTS adapter</Title>
+    <Description>In-process text-to-speech adapter that wraps KokoroSharp's KokoroTTS engine behind Microsoft.Extensions.AI.ITextToSpeechClient. Produces 24 kHz / 16-bit / mono PCM audio in single-shot and streaming flavours.</Description>
+
+    <!-- MEAI001: ITextToSpeechClient is still experimental in MEAI 10.6.
+         SUTANDO001: we hold the experimental Sutando.LocalInference abstractions package. -->
+    <NoWarn>$(NoWarn);MEAI001;SUTANDO001</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sutando.LocalInference.Abstractions\Sutando.LocalInference.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- KokoroSharp 0.6.7 — ships KokoroTTS / KokoroWavSynthesizer + bundled voices. Does NOT
+         natively implement ITextToSpeechClient (yet) so we wrap it ourselves. -->
+    <PackageReference Include="KokoroSharp" Version="0.6.7" />
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="10.6.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sutando.Tests" />
+  </ItemGroup>
+
+</Project>
