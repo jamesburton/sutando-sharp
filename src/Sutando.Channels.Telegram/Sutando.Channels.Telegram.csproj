@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Sutando.Channels.Telegram</RootNamespace>
+    <PackageId>Sutando.Channels.Telegram</PackageId>
+    <Title>Sutando — Telegram channel adapter</Title>
+    <Description>Long-poll Telegram bot bridge: maps inbound messages, photos, voice notes and documents into Sutando task envelopes; delivers result files back to the originating chat with marker semantics ([REPLIED], [no-send], [deduped:], [file:]).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sutando.Channels.Abstractions\Sutando.Channels.Abstractions.csproj" />
+    <ProjectReference Include="..\Sutando.Workspace\Sutando.Workspace.csproj" />
+    <ProjectReference Include="..\Sutando.Bridge\Sutando.Bridge.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Telegram.Bot v22 pin: the SDK we wrap. Bumped only by deliberate migration. -->
+    <PackageReference Include="Telegram.Bot" Version="22.10.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sutando.Tests" />
+  </ItemGroup>
+
+</Project>
