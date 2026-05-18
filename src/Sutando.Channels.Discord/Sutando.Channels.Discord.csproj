@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Sutando.Channels.Discord</RootNamespace>
+    <PackageId>Sutando.Channels.Discord</PackageId>
+    <Title>Sutando — Discord channel adapter</Title>
+    <Description>Discord channel adapter for Sutando: listens for DMs and channel @mentions, writes task envelopes to the bridge, and delivers results back to Discord. Built on DSharpPlus.</Description>
+    <!-- DSharpPlus targets netstandard2.0 and references Newtonsoft.Json + several System.* facade
+         packages. On .NET 10 those facade packages surface NU1701/NU1903 advisory warnings that
+         the TreatWarningsAsErrors flag promotes to errors. Suppress the known-safe noise so the
+         channel project still builds under the repo-wide warning-as-error policy. -->
+    <NoWarn>$(NoWarn);NU1701;NU1903;NU1902</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sutando.Channels.Abstractions\Sutando.Channels.Abstractions.csproj" />
+    <ProjectReference Include="..\Sutando.Workspace\Sutando.Workspace.csproj" />
+    <ProjectReference Include="..\Sutando.Bridge\Sutando.Bridge.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DSharpPlus" Version="4.5.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+  </ItemGroup>
+
+  <!-- Expose `internal` test seams (DiscordChannel.ExtractChannelIdFromTaskId,
+       DiscordChannel.ChunkAtDiscordLimit) to the test assembly without making them part
+       of the public API surface. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sutando.Tests" />
+  </ItemGroup>
+
+</Project>

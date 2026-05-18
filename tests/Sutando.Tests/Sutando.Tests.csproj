@@ -39,6 +39,7 @@
     <ProjectReference Include="..\..\src\Sutando.Platform.Abstractions\Sutando.Platform.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Browser\Sutando.Browser.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Channels.Cli\Sutando.Channels.Cli.csproj" />
+    <ProjectReference Include="..\..\src\Sutando.Channels.Discord\Sutando.Channels.Discord.csproj" />
   </ItemGroup>
 
   <!-- Windows-only project reference + test sources. Other TFMs simply don't see the files. -->
