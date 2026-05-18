@@ -16,6 +16,7 @@ Run any of these via:
 
 | Verb | What |
 |---|---|
+| `sutando init [--yes] [--launch-dashboard]` | Bootstrap a fresh workspace: create the standard subdirs (`tasks/`, `results/`, `state/`, `state/cores/`, `notes/`, `data/`, `logs/`), write a `.env.example` listing every recognised env var, probe the host for prerequisites (`claude` / `codex` / `python3` / `node` / `bash` on PATH; `api.anthropic.com` reachable), and write a heartbeat baseline. `--yes` skips the y/N confirmation; `--launch-dashboard` spawns `sutando dashboard` as a detached process. |
 | `sutando workspace` | Print the resolved workspace dir and key paths (`tasks/`, `results/`, `state/`, `core-status.json`). |
 | `sutando work <task>` | Submit a chat-source task into `<workspace>/tasks/task-chat-<ms>.txt`. |
 | `sutando watch` | Watch `tasks/` for new envelopes; print arrivals (id, source, priority, tier, user, body preview). Ctrl+C to stop. |
