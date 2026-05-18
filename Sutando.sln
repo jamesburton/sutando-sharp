@@ -23,6 +23,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sutando.Channels.Cli", "src
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sutando.Platform.Windows", "src\Sutando.Platform.Windows\Sutando.Platform.Windows.csproj", "{0AF5D973-6698-43E0-8B0D-C4BC09486B7E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sutando.Channels.Abstractions", "src\Sutando.Channels.Abstractions\Sutando.Channels.Abstractions.csproj", "{FF4A1010-1EA2-41B0-81D9-9F7AF0716297}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -141,6 +143,18 @@ Global
 		{0AF5D973-6698-43E0-8B0D-C4BC09486B7E}.Release|x64.Build.0 = Release|Any CPU
 		{0AF5D973-6698-43E0-8B0D-C4BC09486B7E}.Release|x86.ActiveCfg = Release|Any CPU
 		{0AF5D973-6698-43E0-8B0D-C4BC09486B7E}.Release|x86.Build.0 = Release|Any CPU
+		{FF4A1010-1EA2-41B0-81D9-9F7AF0716297}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FF4A1010-1EA2-41B0-81D9-9F7AF0716297}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FF4A1010-1EA2-41B0-81D9-9F7AF0716297}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{FF4A1010-1EA2-41B0-81D9-9F7AF0716297}.Debug|x64.Build.0 = Debug|Any CPU
+		{FF4A1010-1EA2-41B0-81D9-9F7AF0716297}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{FF4A1010-1EA2-41B0-81D9-9F7AF0716297}.Debug|x86.Build.0 = Debug|Any CPU
+		{FF4A1010-1EA2-41B0-81D9-9F7AF0716297}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FF4A1010-1EA2-41B0-81D9-9F7AF0716297}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FF4A1010-1EA2-41B0-81D9-9F7AF0716297}.Release|x64.ActiveCfg = Release|Any CPU
+		{FF4A1010-1EA2-41B0-81D9-9F7AF0716297}.Release|x64.Build.0 = Release|Any CPU
+		{FF4A1010-1EA2-41B0-81D9-9F7AF0716297}.Release|x86.ActiveCfg = Release|Any CPU
+		{FF4A1010-1EA2-41B0-81D9-9F7AF0716297}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -154,5 +168,6 @@ Global
 		{35D4345D-5EE2-4A38-9B45-AD59446C518C} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{9684D8DB-FBB7-4335-8FB1-F73B35AF84E4} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{0AF5D973-6698-43E0-8B0D-C4BC09486B7E} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{FF4A1010-1EA2-41B0-81D9-9F7AF0716297} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

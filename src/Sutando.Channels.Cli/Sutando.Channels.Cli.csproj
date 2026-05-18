@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Sutando.Channels.Abstractions\Sutando.Channels.Abstractions.csproj" />
     <ProjectReference Include="..\Sutando.Workspace\Sutando.Workspace.csproj" />
     <ProjectReference Include="..\Sutando.Bridge\Sutando.Bridge.csproj" />
   </ItemGroup>

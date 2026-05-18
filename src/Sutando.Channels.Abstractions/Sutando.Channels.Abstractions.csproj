@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Sutando.Channels</RootNamespace>
+    <PackageId>Sutando.Channels.Abstractions</PackageId>
+    <Title>Sutando — channel-adapter contracts</Title>
+    <Description>Shared interface contracts (IChannel) implemented by per-transport channel adapters: CLI REPL, Telegram, Discord, Slack, voice, HTTP API, …</Description>
+  </PropertyGroup>
+
+</Project>

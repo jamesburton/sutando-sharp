@@ -23,6 +23,10 @@ namespace Sutando.Channels.Cli;
 /// </remarks>
 public sealed class CliChatChannel : IChannel
 {
+    /// <inheritdoc/>
+    public string Id => "cli";
+
+
     private readonly WorkspaceDirectory _workspace;
     private readonly CliChatChannelOptions _options;
     private readonly TextReader _input;
