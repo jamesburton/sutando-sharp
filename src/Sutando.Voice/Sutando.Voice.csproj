@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Sutando.Voice</RootNamespace>
+    <PackageId>Sutando.Voice</PackageId>
+    <Title>Sutando — voice WebSocket fan-out server</Title>
+    <Description>ASP.NET Core minimal-API host that fans out a single Gemini Live voice session per WebSocket client connection. Browser audio in, model audio out, JSON envelope protocol over /voice. Sits on top of Sutando.Realtime — does not modify the transport layer.</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!-- The default ASP.NET Core Web SDK ships a wwwroot/ check that warns when missing.
+         Our static content lives next to the source files; suppress the convention check. -->
+    <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sutando.Realtime\Sutando.Realtime.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Ship the developer harness HTML inside the package so /voice consumers can sanity-check
+         the WS handshake without running a separate static server. -->
+    <EmbeddedResource Include="wwwroot\index.html" />
+  </ItemGroup>
+
+</Project>
