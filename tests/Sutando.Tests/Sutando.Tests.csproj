@@ -34,6 +34,10 @@
          SignalR.Client is for Dashboard hub round-trip tests. -->
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.0" />
+    <!-- Aspire.Hosting.Testing exposes DistributedApplicationTestingBuilder, which we
+         use in tests/AppHost/ to inspect the AppHost's resource graph without booting
+         Docker. Version-pinned alongside Aspire.AppHost.Sdk in Sutando.AppHost.csproj. -->
+    <PackageReference Include="Aspire.Hosting.Testing" Version="13.3.3" />
   </ItemGroup>
 
   <ItemGroup>
@@ -63,6 +67,11 @@
     <!-- Sutando.Phone is not yet in Sutando.sln (see Sutando.Phone/INTEGRATION-NOTES.md);
          the transitive reference here keeps it on the dotnet build + test happy path. -->
     <ProjectReference Include="..\..\src\Sutando.Phone\Sutando.Phone.csproj" />
+    <!-- Sutando.AppHost is the Aspire 13 orchestrator (see Sutando.AppHost/INTEGRATION-NOTES.md);
+         not yet in Sutando.sln. The tests in tests/AppHost/ reflect on its compiled entry-point
+         via Aspire.Hosting.Testing, so a ProjectReference is required even though we never
+         instantiate Sutando.AppHost types directly. -->
+    <ProjectReference Include="..\..\src\Sutando.AppHost\Sutando.AppHost.csproj" />
   </ItemGroup>
 
   <!-- Windows-only project reference + test sources. Other TFMs simply don't see the files. -->
