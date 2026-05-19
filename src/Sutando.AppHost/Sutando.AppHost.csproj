@@ -1,0 +1,48 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.2.0">
+
+  <PropertyGroup>
+    <!-- The AppHost project is an executable (Aspire orchestrator entry point) that
+         spins up the local-inference fleet. It must never be packaged as a NuGet
+         tool — IsPackable=false overrides the inherited Directory.Build.props
+         packaging defaults. -->
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Sutando.AppHost</RootNamespace>
+    <AssemblyName>Sutando.AppHost</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <UserSecretsId>sutando-apphost</UserSecretsId>
+
+    <!-- Aspire's generated `Projects.*` typed-handle classes can emit some
+         documentation / nullable analyzer warnings under the strict
+         TreatWarningsAsErrors regime inherited from Directory.Build.props. CS1591
+         is "missing XML comment on generated public type"; CA1707 catches
+         underscore-containing names like `Projects.Sutando_Cli`. Both are
+         intrinsic to the Aspire SDK code-generation and not under our control. -->
+    <NoWarn>$(NoWarn);CS1591;CA1707</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Aspire.Hosting.Docker enables `aspire publish` to emit a docker-compose.yml
+         deployment artifact via the DockerComposeEnvironment publisher. Pinned to
+         13.3.3 which is the latest 13.x release co-installed in the .NET 10 SDK
+         workload at recon time (see INTEGRATION-NOTES.md for the version-rebase
+         procedure if Aspire 14 lands before merge). -->
+    <PackageReference Include="Aspire.Hosting.Docker" Version="13.3.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The agent itself is a .NET project reference. Aspire's SDK auto-generates
+         a `Projects.Sutando_Cli` handle that `AppHost.cs` consumes via
+         `builder.AddProject<Projects.Sutando_Cli>("agent")`. Adding the reference
+         here does NOT modify Sutando.Cli.csproj — it only declares a dependency
+         in this direction. -->
+    <ProjectReference Include="..\Sutando.Cli\Sutando.Cli.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Dockerfiles live next to the csproj so AddDockerfile's context-path
+         resolution is stable across `dotnet run` and `aspire run`. Visible in
+         Visual Studio's Solution Explorer for editing. -->
+    <None Include="dockerfiles\**\*" CopyToOutputDirectory="Never" />
+  </ItemGroup>
+
+</Project>
