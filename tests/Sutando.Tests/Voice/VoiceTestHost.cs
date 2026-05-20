@@ -53,19 +53,23 @@ internal sealed class VoiceTestHost : WebApplicationFactory<Program>
         /// <summary>The session minted on the most recent client. Null until the handler calls <c>CreateSessionAsync</c>.</summary>
         public FakeRealtimeClientSession? LatestSession => LatestClient?.LatestSession;
 
-        /// <summary>Waits up to <paramref name="timeout"/> for the next <see cref="Create"/> call AND the corresponding session creation.</summary>
+        /// <summary>Waits up to <paramref name="timeout"/> for a <see cref="Create"/> call AND the corresponding session creation.</summary>
         public async Task<FakeRealtimeClientSession> WaitForCreateAsync(TimeSpan timeout)
         {
-            Task<FakeRealtimeClient> task;
+            FakeRealtimeClient? existing;
+            Task<FakeRealtimeClient> next;
             lock (_gate)
             {
-                if (_latest is not null && _latest.LatestSession is not null)
-                {
-                    return _latest.LatestSession;
-                }
-                task = _next.Task;
+                existing = _latest;
+                next = _next.Task;
             }
-            var client = await task.WaitAsync(timeout).ConfigureAwait(false);
+
+            // Create() and CreateSessionAsync are two separate handler steps. If the server has
+            // already raced ahead and called Create(), _latest is set but its session may not be
+            // minted yet — adopt that client. Awaiting _next here would be a bug: _next is the
+            // *next* Create() call, which never happens for a single-connection test, so the
+            // await would time out even though the client we want already exists.
+            var client = existing ?? await next.WaitAsync(timeout).ConfigureAwait(false);
 
             // CreateSessionAsync resolves synchronously inside the handler, but the read-loop may
             // not have started yet — poll briefly until LatestSession appears.
