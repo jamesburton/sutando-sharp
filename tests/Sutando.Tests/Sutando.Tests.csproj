@@ -65,13 +65,10 @@
     <ProjectReference Include="..\..\src\Sutando.Api\Sutando.Api.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Dashboard\Sutando.Dashboard.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Voice\Sutando.Voice.csproj" />
-    <!-- Sutando.Phone is not yet in Sutando.sln (see Sutando.Phone/INTEGRATION-NOTES.md);
-         the transitive reference here keeps it on the dotnet build + test happy path. -->
     <ProjectReference Include="..\..\src\Sutando.Phone\Sutando.Phone.csproj" />
-    <!-- Sutando.AppHost is the Aspire 13 orchestrator (see Sutando.AppHost/INTEGRATION-NOTES.md);
-         not yet in Sutando.sln. The tests in tests/AppHost/ reflect on its compiled entry-point
-         via Aspire.Hosting.Testing, so a ProjectReference is required even though we never
-         instantiate Sutando.AppHost types directly. -->
+    <!-- Sutando.AppHost is the Aspire 13 orchestrator. The tests in tests/AppHost/ reflect on
+         its compiled entry-point via Aspire.Hosting.Testing, so a ProjectReference is required
+         even though we never instantiate Sutando.AppHost types directly. -->
     <ProjectReference Include="..\..\src\Sutando.AppHost\Sutando.AppHost.csproj" />
   </ItemGroup>
 
