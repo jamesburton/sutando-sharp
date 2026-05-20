@@ -18,7 +18,7 @@ internal enum ClientMessageType
     /// <summary>A text turn from the user (no audio).</summary>
     Text,
 
-    /// <summary>User barge-in. Currently logged only — <see cref="Sutando.Realtime.IRealtimeTransport"/> exposes no interrupt API.</summary>
+    /// <summary>User barge-in. Currently logged only — the underlying realtime session exposes no interrupt API.</summary>
     Interrupt,
 
     /// <summary>Explicit turn-complete hint from the client. Currently logged only — see above.</summary>

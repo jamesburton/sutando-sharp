@@ -106,7 +106,10 @@ public sealed class TwilioMediaSocketHandler
                 return;
             }
 
-            session = new VoiceSession(transportFactory: _transportFactory.Create);
+            // ownsClient: true — the factory hands out a fresh IRealtimeClient per call, and
+            // tearing it down at the end of HandleAsync mirrors the original transport-per-
+            // connection lifecycle (and keeps the in-process test fakes ergonomic).
+            session = new VoiceSession(client: _transportFactory.Create(), ownsClient: true);
             // SystemInstruction + voice are bound once on the session — there's no per-tier
             // diff in this slice. Unverified tier still gets the full voice but its session is
             // forcibly torn down after PhoneOptions.UnverifiedSessionTimeoutSeconds.

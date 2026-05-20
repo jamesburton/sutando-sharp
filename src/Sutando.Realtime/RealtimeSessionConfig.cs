@@ -1,13 +1,35 @@
 namespace Sutando.Realtime;
 
 /// <summary>
-/// Configuration for a single Gemini Live session.
+/// Per-session configuration for a Gemini Live (or compatible) realtime conversation.
 /// </summary>
+/// <remarks>
+/// <para>
+/// Credentials are NOT carried here — they live on the <c>IRealtimeClient</c>
+/// (e.g. <c>GeminiLiveRealtimeClient</c>'s <c>ApiKey</c> ctor parameter), in line with MEAI's
+/// client-owns-auth / session-owns-conversation split. The optional <see cref="ApiKey"/> field
+/// is preserved purely as a back-compat carrier for <c>Sutando.Voice</c> /
+/// <c>Sutando.Phone</c> consumers that historically supplied the key per-call: when present
+/// and non-empty, the realtime adapter may use it to override the client's default key for
+/// this session only. Greenfield callers should leave it null and configure the client.
+/// </para>
+/// <para>
+/// The full set of Sutando-side fields maps onto MEAI's <c>RealtimeSessionOptions</c> at the
+/// adapter boundary — see <c>MAPPING.md</c> in this project for the exact translation. Fields
+/// without a MEAI peer (<see cref="ResumptionHandle"/>, the two transcription flags) survive
+/// as Gemini-specific extensions and are read directly by <c>GeminiLiveRealtimeClientSession</c>.
+/// </para>
+/// </remarks>
 /// <param name="Model">
 /// Model id, e.g. <c>gemini-2.5-flash-live-preview</c> or <c>gemini-3.1-flash-live-preview</c>.
 /// Passed verbatim into <c>BidiGenerateContentSetup.Model</c>.
 /// </param>
-/// <param name="ApiKey">Google AI Studio API key. Mandatory — there is no token-auth fallback here.</param>
+/// <param name="ApiKey">
+/// Optional override of the <c>IRealtimeClient</c>'s default API key. Null = use the
+/// client's configured key. Kept as a field so existing call sites that constructed
+/// <c>RealtimeSessionConfig</c> with an API key continue to compile; see the remarks for why
+/// this is preserved.
+/// </param>
 /// <param name="VoiceName">
 /// Prebuilt voice id (e.g. <c>Puck</c>, <c>Charon</c>, <c>Kore</c>). Null falls back to the
 /// model default. Bodhi defaults to <c>Puck</c>; we keep the same default for parity.
@@ -32,7 +54,7 @@ namespace Sutando.Realtime;
 /// </param>
 public sealed record RealtimeSessionConfig(
     string Model,
-    string ApiKey,
+    string? ApiKey = null,
     string? VoiceName = "Puck",
     string? SystemInstruction = null,
     IReadOnlyList<RealtimeToolDefinition>? Tools = null,

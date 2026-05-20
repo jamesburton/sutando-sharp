@@ -16,7 +16,7 @@ namespace Sutando.Voice;
 /// </para>
 /// <list type="bullet">
 ///   <item><b>Inbound:</b> reads text frames off the WS, parses the JSON envelope, forwards audio/text
-///   to <see cref="IRealtimeTransport.SendRealtimeInputAsync"/>.</item>
+///   to <see cref="VoiceSession.SendAsync(RealtimeInput, CancellationToken)"/>.</item>
 ///   <item><b>Outbound:</b> subscribes to <see cref="VoiceSession.EventReceived"/>, projects each
 ///   <see cref="RealtimeServerEvent"/> to a <see cref="ServerMessage"/>, and writes it as a single text
 ///   frame.</item>
@@ -87,7 +87,11 @@ public sealed class VoiceWebSocketHandler
                 return;
             }
 
-            var session = new VoiceSession(transportFactory: _transportFactory.Create);
+            // ownsClient: true — the factory hands out a fresh IRealtimeClient per WS upgrade,
+            // and tearing it down at the end of HandleAsync mirrors the original transport-per-
+            // connection lifecycle (and keeps the in-process test fakes ergonomic — see
+            // VoiceTestHost.FakeFactory).
+            var session = new VoiceSession(client: _transportFactory.Create(), ownsClient: true);
             var config = new RealtimeSessionConfig(
                 Model: opts.Model,
                 ApiKey: opts.ApiKey,

@@ -4,12 +4,20 @@
     <RootNamespace>Sutando.Realtime</RootNamespace>
     <PackageId>Sutando.Realtime</PackageId>
     <Title>Sutando — voice/realtime transport layer</Title>
-    <Description>Transport-only voice/realtime layer for Sutando. Wraps Gemini Live (BidiGenerateContent WebSocket) behind an IRealtimeTransport interface, with a VoiceSession state machine and tool-call dispatch. First slice of the bodhi-realtime-agent port — orchestrator (conversation replay, WebSocket fan-out server, audio device IO) is deferred.</Description>
+    <Description>Voice/realtime layer for Sutando, built on Microsoft.Extensions.AI's IRealtimeClient / IRealtimeClientSession surface. Wraps Gemini Live (BidiGenerateContent WebSocket) behind a GeminiLiveRealtimeClient adapter with a VoiceSession state machine and tool-call dispatch. See MAPPING.md for the MEAI ↔ Sutando type mapping and the deliberate deviations from MEAI's intended contract.</Description>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- MEAI's realtime surface (IRealtimeClient, IRealtimeClientSession, RealtimeServerMessage,
+         etc.) is marked [Experimental("MEAI001")] in 10.6. We consume it directly because the
+         shape matches what Sutando.Realtime needs and the churn risk is contained to this project
+         and its two consumers (Sutando.Voice, Sutando.Phone). Downstream consumers do not see
+         the experimental types — VoiceSession's public event surface is the Sutando-owned
+         RealtimeServerEvent hierarchy. -->
+    <NoWarn>$(NoWarn);MEAI001</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="10.6.0" />
     <PackageReference Include="Google_GenerativeAI.Live" Version="3.6.6" />
   </ItemGroup>
 

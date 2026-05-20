@@ -1,20 +1,22 @@
 using System.Text.Json;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Sutando.Realtime;
 
 /// <summary>
-/// High-level wrapper around an <see cref="IRealtimeTransport"/>. Owns the conversation event bus,
+/// High-level wrapper around an <see cref="IRealtimeClient"/>. Owns the conversation event bus,
 /// the lifecycle state machine, and tool-call dispatch.
 /// </summary>
 /// <remarks>
 /// <para>
-/// This is the surface bodhi exposes as <c>VoiceSession</c>; the C# implementation here is the
-/// first slice — transport + state machine + tool dispatch. The deferred work is captured in
-/// <c>INTEGRATION-NOTES.md</c> and includes the WebSocket fan-out server (bodhi binds <c>:9900</c>
-/// for its browser client), the web client itself, audio device IO, audio-file ingestion, and the
-/// full conversation-replay reconnect path.
+/// This is the surface bodhi exposes as <c>VoiceSession</c>. The transport layer underneath
+/// flows through MEAI's <see cref="IRealtimeClient"/> / <see cref="IRealtimeClientSession"/>
+/// types — see <c>MAPPING.md</c> for the type-by-type translation. The public event surface
+/// remains Sutando's sealed <see cref="RealtimeServerEvent"/> hierarchy: the read loop
+/// translates MEAI <see cref="RealtimeServerMessage"/> values into Sutando events via
+/// <see cref="MeaiToSutandoEventAdapter"/> before raising <see cref="EventReceived"/>.
 /// </para>
 /// <para>
 /// <b>Reconnect:</b> on a non-client-initiated <see cref="RealtimeTransportClosed"/> or a
@@ -27,32 +29,56 @@ namespace Sutando.Realtime;
 /// </remarks>
 public sealed class VoiceSession : IAsyncDisposable
 {
-    private readonly Func<IRealtimeTransport> _transportFactory;
+    private readonly IRealtimeClient _client;
+    private readonly bool _ownsClient;
     private readonly ILogger<VoiceSession> _logger;
     private readonly Dictionary<string, ToolRegistration> _tools = new(StringComparer.Ordinal);
     private readonly object _stateLock = new();
     private readonly CancellationTokenSource _disposeCts = new();
 
     private VoiceSessionState _state = VoiceSessionState.Idle;
-    private IRealtimeTransport? _transport;
+    private IRealtimeClientSession? _session;
     private RealtimeSessionConfig? _config;
     private Task? _readLoop;
     private string? _resumptionHandle;
     private bool _disposed;
 
-    /// <summary>Creates a new session.</summary>
-    /// <param name="transportFactory">
-    /// Factory invoked once per connect — including reconnects — to allocate a fresh
-    /// <see cref="IRealtimeTransport"/>. The default factory builds a <see cref="GeminiLiveTransport"/>
-    /// with the supplied <paramref name="logger"/>.
+    /// <summary>Creates a new session bound to the supplied realtime client.</summary>
+    /// <param name="client">
+    /// The MEAI realtime client to drive. Reused across reconnects (each connect calls
+    /// <see cref="IRealtimeClient.CreateSessionAsync"/>). Caller retains ownership unless
+    /// <paramref name="ownsClient"/> is set.
+    /// </param>
+    /// <param name="ownsClient">
+    /// When true, <see cref="DisposeAsync"/> also disposes the supplied <paramref name="client"/>.
+    /// Defaults to false so DI-registered singletons aren't accidentally torn down when one
+    /// session ends.
     /// </param>
     /// <param name="logger">Optional logger.</param>
     public VoiceSession(
-        Func<IRealtimeTransport>? transportFactory = null,
+        IRealtimeClient client,
+        bool ownsClient = false,
         ILogger<VoiceSession>? logger = null)
     {
+        ArgumentNullException.ThrowIfNull(client);
+        _client = client;
+        _ownsClient = ownsClient;
         _logger = logger ?? NullLogger<VoiceSession>.Instance;
-        _transportFactory = transportFactory ?? (() => new GeminiLiveTransport());
+    }
+
+    /// <summary>
+    /// Convenience overload that auto-builds a <see cref="GeminiLiveRealtimeClient"/> with no
+    /// default API key — callers must set <see cref="RealtimeSessionConfig.ApiKey"/> on the
+    /// per-session config.
+    /// </summary>
+    /// <remarks>
+    /// Retained for back-compat with the original parameter-less constructor used by
+    /// <c>GeminiLiveIntegrationTests</c>. New code should construct an
+    /// <see cref="IRealtimeClient"/> explicitly and pass it via the primary ctor.
+    /// </remarks>
+    public VoiceSession()
+        : this(new GeminiLiveRealtimeClient(), ownsClient: true)
+    {
     }
 
     /// <summary>The current state of the session. Reading is thread-safe.</summary>
@@ -94,10 +120,10 @@ public sealed class VoiceSession : IAsyncDisposable
     }
 
     /// <summary>
-    /// Connects the underlying transport and starts the read-loop. Completes when the WebSocket
-    /// handshake succeeds — callers should wait for <see cref="State"/> to reach
-    /// <see cref="VoiceSessionState.Listening"/> (which fires on the <see cref="RealtimeSetupComplete"/>
-    /// event) before sending input.
+    /// Creates a fresh underlying realtime session on the client and starts the read-loop.
+    /// Completes when the session has been created — callers should wait for <see cref="State"/>
+    /// to reach <see cref="VoiceSessionState.Listening"/> (which fires on the
+    /// <see cref="RealtimeSetupComplete"/> event) before sending input.
     /// </summary>
     /// <param name="config">Session config. <see cref="RealtimeSessionConfig.ResumptionHandle"/> is overwritten with the cached handle, if any.</param>
     /// <param name="ct">Cancellation token.</param>
@@ -120,13 +146,22 @@ public sealed class VoiceSession : IAsyncDisposable
             ? config with { ResumptionHandle = _resumptionHandle }
             : config;
 
-        var transport = _transportFactory();
-        _transport = transport;
-        _config = effective;
+        // Hand the Sutando-side config to the client via RawRepresentationFactory — providers that
+        // understand the type (GeminiLiveRealtimeClient) pull off the Gemini extensions; the
+        // canonical IRealtimeClient surface (CreateSessionAsync(RealtimeSessionOptions?)) stays
+        // unchanged.
+        var options = new RealtimeSessionOptions
+        {
+            Model = effective.Model,
+            Voice = effective.VoiceName,
+            Instructions = effective.SystemInstruction,
+            RawRepresentationFactory = () => effective,
+        };
 
+        IRealtimeClientSession session;
         try
         {
-            await transport.ConnectAsync(effective, ct).ConfigureAwait(false);
+            session = await _client.CreateSessionAsync(options, ct).ConfigureAwait(false);
         }
         catch
         {
@@ -134,12 +169,13 @@ public sealed class VoiceSession : IAsyncDisposable
             {
                 TransitionTo_NoLock(VoiceSessionState.Failed);
             }
-            await transport.DisposeAsync().ConfigureAwait(false);
-            _transport = null;
             throw;
         }
 
-        _readLoop = Task.Run(() => ReadLoopAsync(transport, _disposeCts.Token), CancellationToken.None);
+        _session = session;
+        _config = effective;
+
+        _readLoop = Task.Run(() => ReadLoopAsync(session, effective.EffectiveAudio, _disposeCts.Token), CancellationToken.None);
     }
 
     /// <summary>Sends a single realtime input (text or audio).</summary>
@@ -147,21 +183,33 @@ public sealed class VoiceSession : IAsyncDisposable
     /// <param name="ct">Cancellation token.</param>
     public Task SendAsync(RealtimeInput input, CancellationToken ct)
     {
-        var transport = _transport ?? throw new InvalidOperationException("Session is not connected.");
-        return transport.SendRealtimeInputAsync(input, ct);
+        ArgumentNullException.ThrowIfNull(input);
+        var session = _session ?? throw new InvalidOperationException("Session is not connected.");
+        var message = BuildClientMessage(input, _config?.EffectiveAudio ?? RealtimeAudioConfig.Default);
+        return session.SendAsync(message, ct);
     }
 
     /// <summary>Disconnects the underlying transport.</summary>
     /// <param name="ct">Cancellation token.</param>
     public async Task DisconnectAsync(CancellationToken ct)
     {
-        var transport = _transport;
-        if (transport is null)
+        var session = _session;
+        if (session is null)
         {
             return;
         }
 
-        await transport.DisconnectAsync(ct).ConfigureAwait(false);
+        // MEAI's IRealtimeClientSession has no explicit Disconnect — DisposeAsync is the close.
+        // We retain the consumer-facing DisconnectAsync method but route it through DisposeAsync.
+        try
+        {
+            await session.DisposeAsync().ConfigureAwait(false);
+        }
+        catch
+        {
+            // best-effort
+        }
+
         if (_readLoop is { } loop)
         {
             try
@@ -173,6 +221,8 @@ public sealed class VoiceSession : IAsyncDisposable
                 // best-effort
             }
         }
+
+        _session = null;
     }
 
     /// <inheritdoc />
@@ -186,10 +236,17 @@ public sealed class VoiceSession : IAsyncDisposable
 
         await _disposeCts.CancelAsync().ConfigureAwait(false);
 
-        if (_transport is { } transport)
+        if (_session is { } session)
         {
-            await transport.DisposeAsync().ConfigureAwait(false);
-            _transport = null;
+            try
+            {
+                await session.DisposeAsync().ConfigureAwait(false);
+            }
+            catch
+            {
+                // best-effort — tearing down
+            }
+            _session = null;
         }
 
         if (_readLoop is { } loop)
@@ -204,17 +261,35 @@ public sealed class VoiceSession : IAsyncDisposable
             }
         }
 
+        if (_ownsClient)
+        {
+            try
+            {
+                _client.Dispose();
+            }
+            catch
+            {
+                // best-effort
+            }
+        }
+
         _disposeCts.Dispose();
     }
 
     // --- read loop -------------------------------------------------------
 
-    private async Task ReadLoopAsync(IRealtimeTransport transport, CancellationToken ct)
+    private async Task ReadLoopAsync(IRealtimeClientSession session, RealtimeAudioConfig audioDefaults, CancellationToken ct)
     {
         try
         {
-            await foreach (var evt in transport.ReadEventsAsync(ct).ConfigureAwait(false))
+            await foreach (var msg in session.GetStreamingResponseAsync(ct).ConfigureAwait(false))
             {
+                var evt = MeaiToSutandoEventAdapter.Map(msg, audioDefaults);
+                if (evt is null)
+                {
+                    continue;
+                }
+
                 HandleEvent(evt);
                 EventReceived?.Invoke(this, evt);
 
@@ -222,7 +297,7 @@ public sealed class VoiceSession : IAsyncDisposable
                 {
                     // Tool dispatch deliberately runs after the EventReceived notification so consumers
                     // see the tool call before we start handler tasks for it. Each handler runs on the
-                    // thread pool — the response is sent back via the same transport without blocking
+                    // thread pool — the response is sent back via the same session without blocking
                     // the read loop.
                     foreach (var call in toolCall.Calls)
                     {
@@ -307,8 +382,8 @@ public sealed class VoiceSession : IAsyncDisposable
 
     private async Task DispatchToolAsync(RealtimeFunctionCall call, CancellationToken ct)
     {
-        var transport = _transport;
-        if (transport is null)
+        var session = _session;
+        if (session is null)
         {
             return;
         }
@@ -319,12 +394,12 @@ public sealed class VoiceSession : IAsyncDisposable
             {
                 _logger.LogWarning("Received call for unregistered tool '{Tool}' (id={Id}). Replying with error.", call.Name, call.Id);
                 var err = JsonSerializer.SerializeToElement(new { error = $"Tool '{call.Name}' is not registered." });
-                await transport.SendToolResponseAsync(new ToolResponse(call.Id, call.Name, err), ct).ConfigureAwait(false);
+                await SendToolResponseAsync(session, new ToolResponse(call.Id, call.Name, err), ct).ConfigureAwait(false);
                 return;
             }
 
             var result = await registration.Handler(call.Arguments, ct).ConfigureAwait(false);
-            await transport.SendToolResponseAsync(new ToolResponse(call.Id, call.Name, result), ct).ConfigureAwait(false);
+            await SendToolResponseAsync(session, new ToolResponse(call.Id, call.Name, result), ct).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -336,12 +411,52 @@ public sealed class VoiceSession : IAsyncDisposable
             try
             {
                 var err = JsonSerializer.SerializeToElement(new { error = ex.Message });
-                await transport.SendToolResponseAsync(new ToolResponse(call.Id, call.Name, err), CancellationToken.None).ConfigureAwait(false);
+                await SendToolResponseAsync(session, new ToolResponse(call.Id, call.Name, err), CancellationToken.None).ConfigureAwait(false);
             }
             catch
             {
                 // best-effort
             }
+        }
+    }
+
+    private static Task SendToolResponseAsync(IRealtimeClientSession session, ToolResponse response, CancellationToken ct)
+    {
+        // Build a MEAI conversation item carrying the function result. AdditionalProperties is
+        // the only carrier MEAI gives us for the function-name (FunctionResultContent has only
+        // CallId + Result + Exception), so we stash it there for the Gemini adapter to read.
+        var additional = new AdditionalPropertiesDictionary
+        {
+            ["name"] = response.Name,
+        };
+        var content = new FunctionResultContent(response.ToolCallId, (object?)response.Response)
+        {
+            AdditionalProperties = additional,
+        };
+        var item = new RealtimeConversationItem(new List<AIContent> { content });
+        var message = new CreateConversationItemRealtimeClientMessage(item);
+        return session.SendAsync(message, ct);
+    }
+
+    private static RealtimeClientMessage BuildClientMessage(RealtimeInput input, RealtimeAudioConfig audio)
+    {
+        switch (input)
+        {
+            case RealtimeInput.RealtimeTextInput text:
+            {
+                var item = new RealtimeConversationItem(
+                    new List<AIContent> { new TextContent(text.Value) },
+                    role: ChatRole.User);
+                return new CreateConversationItemRealtimeClientMessage(item);
+            }
+            case RealtimeInput.RealtimeAudioInput audioInput:
+            {
+                var mime = audioInput.MimeType ?? audio.InputMimeType;
+                var content = new DataContent(audioInput.Pcm, mime);
+                return new InputAudioBufferAppendRealtimeClientMessage(content);
+            }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(input), input.GetType(), "Unknown RealtimeInput variant.");
         }
     }
 

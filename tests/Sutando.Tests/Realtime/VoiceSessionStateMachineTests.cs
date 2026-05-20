@@ -5,8 +5,8 @@ namespace Sutando.Tests.Realtime;
 
 /// <summary>
 /// Pumps known server events through a <see cref="VoiceSession"/> over the in-process
-/// <see cref="FakeRealtimeTransport"/> and asserts that state transitions, resumption-handle
-/// capture, and tool dispatch behave as documented.
+/// <see cref="FakeRealtimeClient"/> + <see cref="FakeRealtimeClientSession"/> pair and asserts
+/// that state transitions, resumption-handle capture, and tool dispatch behave as documented.
 /// </summary>
 public sealed class VoiceSessionStateMachineTests
 {
@@ -26,19 +26,26 @@ public sealed class VoiceSessionStateMachineTests
         throw new Xunit.Sdk.XunitException($"Timed out waiting for state {target} — actual {session.State}.");
     }
 
+    private static async Task<FakeRealtimeClientSession> ConnectAndGetSession(VoiceSession session, FakeRealtimeClient client, RealtimeSessionConfig config)
+    {
+        await session.ConnectAsync(config, CancellationToken.None);
+        // CreateSessionAsync resolves synchronously on the fake, so LatestSession is populated
+        // immediately after ConnectAsync returns.
+        return client.LatestSession ?? throw new InvalidOperationException("Fake client did not create a session.");
+    }
+
     [Fact]
     public async Task Connect_then_SetupComplete_transitions_to_Listening()
     {
-        var fake = new FakeRealtimeTransport();
-        await using var session = new VoiceSession(transportFactory: () => fake);
+        var client = new FakeRealtimeClient();
+        await using var session = new VoiceSession(client);
 
         Assert.Equal(VoiceSessionState.Idle, session.State);
 
-        await session.ConnectAsync(Config(), CancellationToken.None);
+        var fakeSession = await ConnectAndGetSession(session, client, Config());
         Assert.Equal(VoiceSessionState.Connecting, session.State);
-        Assert.True(fake.ConnectCalled);
 
-        fake.Emit(new RealtimeSetupComplete());
+        fakeSession.Emit(new RealtimeSetupComplete());
 
         await WaitForState(session, VoiceSessionState.Listening);
     }
@@ -46,31 +53,31 @@ public sealed class VoiceSessionStateMachineTests
     [Fact]
     public async Task AudioOutput_transitions_to_Speaking_and_TurnComplete_returns_to_Listening()
     {
-        var fake = new FakeRealtimeTransport();
-        await using var session = new VoiceSession(transportFactory: () => fake);
-        await session.ConnectAsync(Config(), CancellationToken.None);
-        fake.Emit(new RealtimeSetupComplete());
+        var client = new FakeRealtimeClient();
+        await using var session = new VoiceSession(client);
+        var fakeSession = await ConnectAndGetSession(session, client, Config());
+        fakeSession.Emit(new RealtimeSetupComplete());
         await WaitForState(session, VoiceSessionState.Listening);
 
-        fake.Emit(new RealtimeAudioOutput(new byte[] { 0x00, 0x01 }, 24_000, 1, 16));
+        fakeSession.Emit(new RealtimeAudioOutput(new byte[] { 0x00, 0x01 }, 24_000, 1, 16));
         await WaitForState(session, VoiceSessionState.Speaking);
 
-        fake.Emit(new RealtimeTurnComplete());
+        fakeSession.Emit(new RealtimeTurnComplete());
         await WaitForState(session, VoiceSessionState.Listening);
     }
 
     [Fact]
     public async Task Interrupted_event_returns_Speaking_to_Listening()
     {
-        var fake = new FakeRealtimeTransport();
-        await using var session = new VoiceSession(transportFactory: () => fake);
-        await session.ConnectAsync(Config(), CancellationToken.None);
-        fake.Emit(new RealtimeSetupComplete());
+        var client = new FakeRealtimeClient();
+        await using var session = new VoiceSession(client);
+        var fakeSession = await ConnectAndGetSession(session, client, Config());
+        fakeSession.Emit(new RealtimeSetupComplete());
         await WaitForState(session, VoiceSessionState.Listening);
-        fake.Emit(new RealtimeAudioOutput(new byte[] { 0x00 }, 24_000, 1, 16));
+        fakeSession.Emit(new RealtimeAudioOutput(new byte[] { 0x00 }, 24_000, 1, 16));
         await WaitForState(session, VoiceSessionState.Speaking);
 
-        fake.Emit(new RealtimeInterrupted());
+        fakeSession.Emit(new RealtimeInterrupted());
 
         await WaitForState(session, VoiceSessionState.Listening);
     }
@@ -78,11 +85,11 @@ public sealed class VoiceSessionStateMachineTests
     [Fact]
     public async Task SessionResumptionUpdate_caches_handle_on_session()
     {
-        var fake = new FakeRealtimeTransport();
-        await using var session = new VoiceSession(transportFactory: () => fake);
-        await session.ConnectAsync(Config(), CancellationToken.None);
+        var client = new FakeRealtimeClient();
+        await using var session = new VoiceSession(client);
+        var fakeSession = await ConnectAndGetSession(session, client, Config());
 
-        fake.Emit(new RealtimeSessionResumptionUpdate("handle-xyz", true));
+        fakeSession.Emit(new RealtimeSessionResumptionUpdate("handle-xyz", true));
 
         // Give the read loop a moment to consume the event.
         await Task.Delay(50);
@@ -93,12 +100,12 @@ public sealed class VoiceSessionStateMachineTests
     [Fact]
     public async Task TransportClosed_event_transitions_to_Disconnected()
     {
-        var fake = new FakeRealtimeTransport();
-        await using var session = new VoiceSession(transportFactory: () => fake);
-        await session.ConnectAsync(Config(), CancellationToken.None);
+        var client = new FakeRealtimeClient();
+        await using var session = new VoiceSession(client);
+        var fakeSession = await ConnectAndGetSession(session, client, Config());
 
-        fake.Emit(new RealtimeTransportClosed(RealtimeCloseInitiator.Server));
-        fake.Complete();
+        fakeSession.Emit(new RealtimeTransportClosed(RealtimeCloseInitiator.Server));
+        fakeSession.Complete();
 
         await WaitForState(session, VoiceSessionState.Disconnected);
     }
@@ -106,8 +113,8 @@ public sealed class VoiceSessionStateMachineTests
     [Fact]
     public async Task ToolCall_is_dispatched_to_registered_handler_and_response_is_sent()
     {
-        var fake = new FakeRealtimeTransport();
-        await using var session = new VoiceSession(transportFactory: () => fake);
+        var client = new FakeRealtimeClient();
+        await using var session = new VoiceSession(client);
 
         var schema = JsonDocument.Parse("""{"type":"object","properties":{"x":{"type":"integer"}}}""").RootElement;
         var calledArgs = JsonDocument.Parse("null").RootElement;
@@ -119,21 +126,21 @@ public sealed class VoiceSessionStateMachineTests
                 return Task.FromResult(JsonSerializer.SerializeToElement(new { ok = true, echoed = 42 }));
             });
 
-        await session.ConnectAsync(Config(), CancellationToken.None);
-        fake.Emit(new RealtimeSetupComplete());
+        var fakeSession = await ConnectAndGetSession(session, client, Config());
+        fakeSession.Emit(new RealtimeSetupComplete());
         await WaitForState(session, VoiceSessionState.Listening);
 
         var argsElement = JsonDocument.Parse("""{"x":42}""").RootElement;
-        fake.Emit(new RealtimeToolCall(new[] { new RealtimeFunctionCall("call-1", "echo", argsElement) }));
+        fakeSession.Emit(new RealtimeToolCall(new[] { new RealtimeFunctionCall("call-1", "echo", argsElement) }));
 
-        // Wait for the response to flow back through the transport.
+        // Wait for the response to flow back through the session.
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(2);
-        while (DateTime.UtcNow < deadline && fake.SentToolResponses.Count == 0)
+        while (DateTime.UtcNow < deadline && fakeSession.SentToolResponses.Count == 0)
         {
             await Task.Delay(10);
         }
 
-        var response = Assert.Single(fake.SentToolResponses);
+        var response = Assert.Single(fakeSession.SentToolResponses);
         Assert.Equal("call-1", response.ToolCallId);
         Assert.Equal("echo", response.Name);
         Assert.True(response.Response.GetProperty("ok").GetBoolean());
@@ -144,23 +151,23 @@ public sealed class VoiceSessionStateMachineTests
     [Fact]
     public async Task ToolCall_for_unregistered_tool_returns_error_response()
     {
-        var fake = new FakeRealtimeTransport();
-        await using var session = new VoiceSession(transportFactory: () => fake);
+        var client = new FakeRealtimeClient();
+        await using var session = new VoiceSession(client);
 
-        await session.ConnectAsync(Config(), CancellationToken.None);
-        fake.Emit(new RealtimeSetupComplete());
+        var fakeSession = await ConnectAndGetSession(session, client, Config());
+        fakeSession.Emit(new RealtimeSetupComplete());
         await WaitForState(session, VoiceSessionState.Listening);
 
         var argsElement = JsonDocument.Parse("{}").RootElement;
-        fake.Emit(new RealtimeToolCall(new[] { new RealtimeFunctionCall("call-1", "unknown_tool", argsElement) }));
+        fakeSession.Emit(new RealtimeToolCall(new[] { new RealtimeFunctionCall("call-1", "unknown_tool", argsElement) }));
 
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(2);
-        while (DateTime.UtcNow < deadline && fake.SentToolResponses.Count == 0)
+        while (DateTime.UtcNow < deadline && fakeSession.SentToolResponses.Count == 0)
         {
             await Task.Delay(10);
         }
 
-        var response = Assert.Single(fake.SentToolResponses);
+        var response = Assert.Single(fakeSession.SentToolResponses);
         Assert.Equal("call-1", response.ToolCallId);
         Assert.True(response.Response.TryGetProperty("error", out var err));
         Assert.Contains("unknown_tool", err.GetString());
@@ -170,7 +177,7 @@ public sealed class VoiceSessionStateMachineTests
     public void RegisterTool_throws_on_duplicate_name()
     {
         var schema = JsonDocument.Parse("{}").RootElement;
-        var session = new VoiceSession(transportFactory: () => new FakeRealtimeTransport());
+        var session = new VoiceSession(new FakeRealtimeClient());
         session.RegisterTool(new RealtimeToolDefinition("dup", "", schema), (_, _) => Task.FromResult(schema));
 
         Assert.Throws<InvalidOperationException>(
@@ -180,27 +187,18 @@ public sealed class VoiceSessionStateMachineTests
     [Fact]
     public async Task ConnectAsync_reapplies_cached_resumption_handle()
     {
-        var fakes = new Queue<FakeRealtimeTransport>(new[] { new FakeRealtimeTransport(), new FakeRealtimeTransport() });
-        await using var session = new VoiceSession(transportFactory: () => fakes.Dequeue());
+        var client = new FakeRealtimeClient();
+        await using var session = new VoiceSession(client);
 
-        await session.ConnectAsync(Config(), CancellationToken.None);
-        var first = session.GetType()
-            .GetField("_transport", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
-            .GetValue(session) as FakeRealtimeTransport;
-        Assert.NotNull(first);
+        var first = await ConnectAndGetSession(session, client, Config());
 
-        first!.Emit(new RealtimeSessionResumptionUpdate("handle-A", true));
+        first.Emit(new RealtimeSessionResumptionUpdate("handle-A", true));
         await Task.Delay(50);
         first.Emit(new RealtimeTransportClosed(RealtimeCloseInitiator.Server));
         first.Complete();
         await WaitForState(session, VoiceSessionState.Disconnected);
 
-        await session.ConnectAsync(Config(), CancellationToken.None);
-
-        var second = session.GetType()
-            .GetField("_transport", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
-            .GetValue(session) as FakeRealtimeTransport;
-        Assert.NotNull(second);
-        Assert.Equal("handle-A", second!.LastConfig?.ResumptionHandle);
+        var second = await ConnectAndGetSession(session, client, Config());
+        Assert.Equal("handle-A", second.LastConfig?.ResumptionHandle);
     }
 }

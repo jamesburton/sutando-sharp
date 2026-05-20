@@ -13,6 +13,10 @@
     <!-- The default ASP.NET Core Web SDK ships a wwwroot/ check that warns when missing.
          Our static content lives next to the source files; suppress the convention check. -->
     <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
+    <!-- The Sutando.Realtime convergence onto MEAI 10.6 leaks MEAI's [Experimental("MEAI001")]
+         marker out through IRealtimeClient / IRealtimeClientSession references in the
+         IRealtimeTransportFactory shim. Suppress here so the Voice host compiles cleanly. -->
+    <NoWarn>$(NoWarn);MEAI001</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

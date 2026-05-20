@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,7 +13,7 @@ namespace Sutando.Tests.Phone;
 
 /// <summary>
 /// In-process host for the phone bridge, with the live Gemini transport substituted by an
-/// in-process <see cref="FakeRealtimeTransport"/> and the live Twilio REST client substituted
+/// in-process <see cref="FakeRealtimeClient"/> and the live Twilio REST client substituted
 /// by a recording fake.
 /// </summary>
 /// <remarks>
@@ -94,44 +95,58 @@ internal sealed class PhoneTestHost : WebApplicationFactory<global::Sutando.Phon
         }
     }
 
-    /// <summary>Fake transport factory — same pattern as VoiceTestHost.</summary>
+    /// <summary>Fake realtime-client factory — same pattern as VoiceTestHost.</summary>
     internal sealed class FakeTransportFactory : IPhoneTransportFactory
     {
         private readonly object _gate = new();
-        private FakeRealtimeTransport? _latest;
-        private TaskCompletionSource<FakeRealtimeTransport> _next = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private FakeRealtimeClient? _latest;
+        private TaskCompletionSource<FakeRealtimeClient> _next = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        public FakeRealtimeTransport? Latest
+        public FakeRealtimeClient? LatestClient
         {
             get { lock (_gate) { return _latest; } }
         }
 
-        public async Task<FakeRealtimeTransport> WaitForCreateAsync(TimeSpan timeout)
+        public FakeRealtimeClientSession? LatestSession => LatestClient?.LatestSession;
+
+        public async Task<FakeRealtimeClientSession> WaitForCreateAsync(TimeSpan timeout)
         {
-            Task<FakeRealtimeTransport> task;
+            FakeRealtimeClient? existing;
+            Task<FakeRealtimeClient> next;
             lock (_gate)
             {
-                if (_latest is not null)
-                {
-                    return _latest;
-                }
-                task = _next.Task;
+                existing = _latest;
+                next = _next.Task;
             }
-            return await task.WaitAsync(timeout).ConfigureAwait(false);
+
+            // Create() and CreateSessionAsync are two separate handler steps. If the server has
+            // already raced ahead and called Create(), _latest is set but its session may not be
+            // minted yet — adopt that client. Awaiting _next here would be a bug: _next is the
+            // *next* Create() call, which never happens for a single-connection test, so the
+            // await would time out even though the client we want already exists.
+            var client = existing ?? await next.WaitAsync(timeout).ConfigureAwait(false);
+
+            var deadline = DateTime.UtcNow + timeout;
+            while (client.LatestSession is null && DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(10).ConfigureAwait(false);
+            }
+            return client.LatestSession
+                ?? throw new TimeoutException("Fake client created but no session was minted within the timeout.");
         }
 
-        public IRealtimeTransport Create()
+        public IRealtimeClient Create()
         {
-            var fake = new FakeRealtimeTransport();
-            TaskCompletionSource<FakeRealtimeTransport> previous;
+            var client = new FakeRealtimeClient();
+            TaskCompletionSource<FakeRealtimeClient> previous;
             lock (_gate)
             {
-                _latest = fake;
+                _latest = client;
                 previous = _next;
-                _next = new TaskCompletionSource<FakeRealtimeTransport>(TaskCreationOptions.RunContinuationsAsynchronously);
+                _next = new TaskCompletionSource<FakeRealtimeClient>(TaskCreationOptions.RunContinuationsAsynchronously);
             }
-            previous.TrySetResult(fake);
-            return fake;
+            previous.TrySetResult(client);
+            return client;
         }
     }
 }
