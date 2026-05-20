@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Sutando.Realtime;
 using Sutando.Tests.Realtime;
@@ -10,8 +11,8 @@ namespace Sutando.Tests.Voice;
 
 /// <summary>
 /// In-process host for the voice WS server, with the live Gemini transport substituted by an
-/// in-process <see cref="FakeRealtimeTransport"/>. Tests pump events into the fake via
-/// <see cref="FakeFactory.Latest"/>.
+/// in-process <see cref="FakeRealtimeClient"/>. Tests pump events into the fake session via
+/// <see cref="FakeFactory.LatestSession"/>.
 /// </summary>
 internal sealed class VoiceTestHost : WebApplicationFactory<Program>
 {
@@ -34,49 +35,61 @@ internal sealed class VoiceTestHost : WebApplicationFactory<Program>
     }
 
     /// <summary>
-    /// Fake transport factory. Captures every transport it hands out so tests can drive events.
+    /// Fake realtime-client factory. Captures every client it hands out so tests can drive
+    /// events through the session that the WS handler creates.
     /// </summary>
     internal sealed class FakeFactory : IRealtimeTransportFactory
     {
         private readonly object _gate = new();
-        private FakeRealtimeTransport? _latest;
-        private TaskCompletionSource<FakeRealtimeTransport> _next = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private FakeRealtimeClient? _latest;
+        private TaskCompletionSource<FakeRealtimeClient> _next = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        /// <summary>The most recently allocated fake transport. Null until <see cref="Create"/> has been called.</summary>
-        public FakeRealtimeTransport? Latest
+        /// <summary>The most recently allocated fake client.</summary>
+        public FakeRealtimeClient? LatestClient
         {
             get { lock (_gate) { return _latest; } }
         }
 
-        /// <summary>Waits up to <paramref name="timeout"/> for the next <see cref="Create"/> call and returns the resulting fake.</summary>
-        /// <param name="timeout">Maximum wait.</param>
-        /// <returns>The fake transport handed to the next session.</returns>
-        public async Task<FakeRealtimeTransport> WaitForCreateAsync(TimeSpan timeout)
+        /// <summary>The session minted on the most recent client. Null until the handler calls <c>CreateSessionAsync</c>.</summary>
+        public FakeRealtimeClientSession? LatestSession => LatestClient?.LatestSession;
+
+        /// <summary>Waits up to <paramref name="timeout"/> for the next <see cref="Create"/> call AND the corresponding session creation.</summary>
+        public async Task<FakeRealtimeClientSession> WaitForCreateAsync(TimeSpan timeout)
         {
-            Task<FakeRealtimeTransport> task;
+            Task<FakeRealtimeClient> task;
             lock (_gate)
             {
-                if (_latest is not null)
+                if (_latest is not null && _latest.LatestSession is not null)
                 {
-                    return _latest;
+                    return _latest.LatestSession;
                 }
                 task = _next.Task;
             }
-            return await task.WaitAsync(timeout).ConfigureAwait(false);
+            var client = await task.WaitAsync(timeout).ConfigureAwait(false);
+
+            // CreateSessionAsync resolves synchronously inside the handler, but the read-loop may
+            // not have started yet — poll briefly until LatestSession appears.
+            var deadline = DateTime.UtcNow + timeout;
+            while (client.LatestSession is null && DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(10).ConfigureAwait(false);
+            }
+            return client.LatestSession
+                ?? throw new TimeoutException("Fake client created but no session was minted within the timeout.");
         }
 
-        public IRealtimeTransport Create()
+        public IRealtimeClient Create()
         {
-            var fake = new FakeRealtimeTransport();
-            TaskCompletionSource<FakeRealtimeTransport> previous;
+            var client = new FakeRealtimeClient();
+            TaskCompletionSource<FakeRealtimeClient> previous;
             lock (_gate)
             {
-                _latest = fake;
+                _latest = client;
                 previous = _next;
-                _next = new TaskCompletionSource<FakeRealtimeTransport>(TaskCreationOptions.RunContinuationsAsynchronously);
+                _next = new TaskCompletionSource<FakeRealtimeClient>(TaskCreationOptions.RunContinuationsAsynchronously);
             }
-            previous.TrySetResult(fake);
-            return fake;
+            previous.TrySetResult(client);
+            return client;
         }
     }
 }
