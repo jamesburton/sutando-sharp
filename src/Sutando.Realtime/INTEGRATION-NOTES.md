@@ -1,5 +1,14 @@
 # Sutando.Realtime — Integration Notes
 
+> **⚠️ Partially superseded.** The sections below describe the original bespoke
+> `IRealtimeTransport` / `GeminiLiveTransport` slice. `Sutando.Realtime` has since
+> converged onto Microsoft.Extensions.AI's `IRealtimeClient` / `IRealtimeClientSession`
+> — `IRealtimeTransport` and `GeminiLiveTransport` no longer exist. For the current
+> design (type-by-type map, server-event map, deviations from MEAI's contract), see
+> [`MAPPING.md`](./MAPPING.md), which is the source of truth. The "Solution wiring",
+> "Dependency", "What's DEFERRED" and "Reconnect semantics" sections below remain
+> broadly accurate; the "What's IN scope" type list does not.
+
 This document tracks how `Sutando.Realtime` plugs into the rest of the solution and what
 the follow-up phase still has to wire up. It exists so the next contributor can
 pick up the file without re-deriving the rationale from commit history.
