@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Sutando.Pipeline</RootNamespace>
+    <PackageId>Sutando.Pipeline</PackageId>
+    <Title>Sutando — pipeline orchestrator</Title>
+    <Description>A Pipecat-style pipeline orchestrator for Sutando's local-inference stack. Defines IPipelineStage / PipelineFrame / Pipeline.Builder and a set of concrete stages that wrap Microsoft.Extensions.AI clients (IChatClient, ISpeechToTextClient, ITextToSpeechClient) and IVadDetector into a backpressure-aware end-to-end voice pipeline.</Description>
+
+    <!-- MEAI001 marks ISpeechToTextClient / ITextToSpeechClient / IRealtimeClient as
+         experimental in MEAI 10.6 — the same surfaces we consume in ChatStage / STT /
+         TTS stages. SUTANDO001 covers Sutando.LocalInference.Abstractions (IVadDetector,
+         AudioFrame). Suppress at the project level so consumers don't have to. -->
+    <NoWarn>$(NoWarn);MEAI001;SUTANDO001</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sutando.LocalInference.Abstractions\Sutando.LocalInference.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- We consume MEAI's experimental STT / TTS / chat surfaces from the concrete stages —
+         pin to the same MEAI 10.6 the rest of the local-inference tree pins. -->
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="10.6.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sutando.Tests" />
+  </ItemGroup>
+
+</Project>
