@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Sutando.Voice;
 
@@ -46,7 +47,24 @@ public static class VoiceServer
             .PostConfigure(options => ApplyOverrides(options, builder.Configuration, args));
 
         builder.Services.AddSingleton<VoiceSessionTracker>();
-        builder.Services.AddSingleton<IRealtimeTransportFactory, GeminiLiveTransportFactory>();
+
+        // Transport selection: --local / SUTANDO_VOICE_LOCAL / Voice:UseLocal swaps the cloud
+        // Gemini Live transport for the in-process STT → Chat → TTS pipeline. The choice is made
+        // once at server boot — every connection uses the same transport.
+        if (ResolveUseLocal(builder.Configuration, args))
+        {
+            builder.Services.AddSingleton<IRealtimeTransportFactory>(sp =>
+            {
+                var voiceOptions = sp.GetRequiredService<IOptions<VoiceOptions>>().Value;
+                var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+                return new LocalPipelineTransportFactory(voiceOptions, loggerFactory);
+            });
+        }
+        else
+        {
+            builder.Services.AddSingleton<IRealtimeTransportFactory, GeminiLiveTransportFactory>();
+        }
+
         builder.Services.AddSingleton<VoiceWebSocketHandler>();
 
         // Bind to the configured port. Kestrel reads URLs at host build time, so resolve the
@@ -124,6 +142,64 @@ public static class VoiceServer
         // Port — CLI > env > config. Configuration already populated options.Port; the override
         // pair below only kicks in when the user supplied a more specific source.
         options.Port = ResolvePort(config, args);
+
+        // Local-inference mode. CLI --local > SUTANDO_VOICE_LOCAL env > Voice:UseLocal config.
+        options.UseLocal = ResolveUseLocal(config, args);
+
+        // Model file paths for the --local pipeline. Env vars take precedence over any
+        // Voice:LocalModels:* configuration keys the binder already applied.
+        ApplyLocalModelOverride(Environment.GetEnvironmentVariable("SUTANDO_WHISPER_MODEL"), v => options.LocalModels.WhisperModel = v);
+        ApplyLocalModelOverride(Environment.GetEnvironmentVariable("SUTANDO_LLAMA_MODEL"), v => options.LocalModels.LlamaModel = v);
+        ApplyLocalModelOverride(Environment.GetEnvironmentVariable("SUTANDO_KOKORO_MODEL"), v => options.LocalModels.KokoroModel = v);
+        ApplyLocalModelOverride(Environment.GetEnvironmentVariable("SUTANDO_SILERO_MODEL"), v => options.LocalModels.SileroModel = v);
+    }
+
+    private static void ApplyLocalModelOverride(string? envValue, Action<string> apply)
+    {
+        if (!string.IsNullOrWhiteSpace(envValue))
+        {
+            apply(envValue);
+        }
+    }
+
+    /// <summary>
+    /// Resolves whether the voice server should run in local-inference mode. Precedence:
+    /// CLI <c>--local</c> &gt; <c>SUTANDO_VOICE_LOCAL</c> env var &gt; <c>Voice:UseLocal</c> config.
+    /// </summary>
+    /// <param name="config">The host's <see cref="IConfiguration"/>.</param>
+    /// <param name="args">CLI args.</param>
+    /// <returns><see langword="true"/> when local mode is requested.</returns>
+    internal static bool ResolveUseLocal(IConfiguration config, string[] args)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        ArgumentNullException.ThrowIfNull(args);
+
+        // CLI flag — bare --local (or --local=true / --local=false).
+        foreach (var a in args)
+        {
+            if (a == "--local")
+            {
+                return true;
+            }
+            if (a.StartsWith("--local=", StringComparison.Ordinal)
+                && bool.TryParse(a.AsSpan("--local=".Length), out var fromCli))
+            {
+                return fromCli;
+            }
+        }
+
+        var env = Environment.GetEnvironmentVariable("SUTANDO_VOICE_LOCAL");
+        if (!string.IsNullOrWhiteSpace(env))
+        {
+            // Accept the conventional truthy spellings as well as bool.Parse's "true"/"false".
+            if (bool.TryParse(env, out var fromEnv))
+            {
+                return fromEnv;
+            }
+            return env is "1" or "yes" or "on" || string.Equals(env, "true", StringComparison.OrdinalIgnoreCase);
+        }
+
+        return config.GetValue<bool?>($"{VoiceOptions.SectionName}:UseLocal") ?? false;
     }
 
     private static int ResolvePort(IConfiguration config, string[] args)

@@ -15,12 +15,25 @@
     <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
     <!-- The Sutando.Realtime convergence onto MEAI 10.6 leaks MEAI's [Experimental("MEAI001")]
          marker out through IRealtimeClient / IRealtimeClientSession references in the
-         IRealtimeTransportFactory shim. Suppress here so the Voice host compiles cleanly. -->
-    <NoWarn>$(NoWarn);MEAI001</NoWarn>
+         IRealtimeTransportFactory shim. SUTANDO001 covers the local-inference adapter surfaces
+         (IVadDetector, the AddWhisperNet / AddSileroVad / … extensions) the local-mode boot
+         path wires up. Suppress both here so the Voice host compiles cleanly. -->
+    <NoWarn>$(NoWarn);MEAI001;SUTANDO001</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Sutando.Realtime\Sutando.Realtime.csproj" />
+    <!-- The local-inference voice transport (the "voice local" mode). Supplies
+         LocalPipelineRealtimeClient, which the host registers as the IRealtimeTransportFactory
+         backend when local mode / Voice:UseLocal is set. -->
+    <ProjectReference Include="..\Sutando.Voice.Local\Sutando.Voice.Local.csproj" />
+    <!-- The in-process local-inference adapters the local flavour wires up from env-var model
+         paths. They're transitively pulled into the build via Sutando.Voice.Local's pipeline
+         dependencies for the abstractions, but the concrete adapters need explicit references. -->
+    <ProjectReference Include="..\Sutando.LocalInference.WhisperNet\Sutando.LocalInference.WhisperNet.csproj" />
+    <ProjectReference Include="..\Sutando.LocalInference.KokoroSharp\Sutando.LocalInference.KokoroSharp.csproj" />
+    <ProjectReference Include="..\Sutando.LocalInference.LlamaSharp\Sutando.LocalInference.LlamaSharp.csproj" />
+    <ProjectReference Include="..\Sutando.LocalInference.Silero\Sutando.LocalInference.Silero.csproj" />
   </ItemGroup>
 
   <ItemGroup>

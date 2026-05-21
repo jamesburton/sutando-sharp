@@ -29,4 +29,50 @@ public sealed class VoiceOptions
 
     /// <summary>Optional system prompt for every session. Null disables.</summary>
     public string? SystemInstruction { get; set; }
+
+    /// <summary>
+    /// When <see langword="true"/>, the voice server runs each connection through the in-process
+    /// local-inference pipeline (STT → Chat → TTS) instead of Gemini Live — the
+    /// <c>sutando voice --local</c> mode. Set via the <c>--local</c> CLI flag, the
+    /// <c>SUTANDO_VOICE_LOCAL</c> env var, or <c>Voice:UseLocal</c> in configuration.
+    /// </summary>
+    /// <remarks>
+    /// In local mode the Gemini-specific options (<see cref="ApiKey"/>, <see cref="Model"/>,
+    /// <see cref="VoiceName"/>) are unused; the model files come from <see cref="LocalModels"/>.
+    /// </remarks>
+    public bool UseLocal { get; set; }
+
+    /// <summary>
+    /// Filesystem paths to the local-inference model files used when <see cref="UseLocal"/> is
+    /// set. Populated from <c>SUTANDO_*_MODEL</c> environment variables; empty when unset, which
+    /// makes the WS upgrade fail gracefully with a clear error envelope.
+    /// </summary>
+    public LocalModelPaths LocalModels { get; set; } = new();
+}
+
+/// <summary>
+/// Filesystem locations of the four local-inference model files the <c>--local</c> voice
+/// pipeline needs. Resolved from environment variables at server-build time.
+/// </summary>
+/// <remarks>
+/// The local-inference adapters do not download models — operators ship them alongside the
+/// deployment. When a path is empty or the file is missing, the <c>--local</c> voice transport
+/// rejects the WebSocket upgrade with an explanatory error rather than crashing the host.
+/// </remarks>
+public sealed class LocalModelPaths
+{
+    /// <summary>Path to the Whisper GGML model (<c>SUTANDO_WHISPER_MODEL</c>), e.g. <c>ggml-base.en.bin</c>.</summary>
+    public string? WhisperModel { get; set; }
+
+    /// <summary>Path to the LlamaSharp GGUF chat model (<c>SUTANDO_LLAMA_MODEL</c>), e.g. <c>Qwen3-8B-Q4_K_M.gguf</c>.</summary>
+    public string? LlamaModel { get; set; }
+
+    /// <summary>Path to the KokoroSharp ONNX TTS model (<c>SUTANDO_KOKORO_MODEL</c>).</summary>
+    public string? KokoroModel { get; set; }
+
+    /// <summary>
+    /// Path to the Silero VAD ONNX model (<c>SUTANDO_SILERO_MODEL</c>). When empty, the
+    /// auto-download Silero registration is used instead — the model is ~2 MB and cached locally.
+    /// </summary>
+    public string? SileroModel { get; set; }
 }

@@ -75,7 +75,10 @@ static void PrintHelp(string version)
     Console.WriteLine("  browser <url> [actions]   Drive a Playwright browser session (navigate, click, fill, screenshot, ...).");
     Console.WriteLine("  telegram                  Run the Telegram channel (reads TELEGRAM_BOT_TOKEN + allow-lists from env).");
     Console.WriteLine("  discord                   Run the Discord channel (reads DISCORD_BOT_TOKEN + allow-lists from env).");
-    Console.WriteLine("  voice                     Run the voice WebSocket server on :9900 (needs GEMINI_VOICE_API_KEY or GEMINI_API_KEY).");
+    Console.WriteLine("  voice [--local]           Run the voice WebSocket server on :9900. Default uses Gemini Live (needs");
+    Console.WriteLine("                            GEMINI_VOICE_API_KEY or GEMINI_API_KEY); --local runs the in-process");
+    Console.WriteLine("                            STT/Chat/TTS pipeline (needs SUTANDO_WHISPER_MODEL / SUTANDO_LLAMA_MODEL /");
+    Console.WriteLine("                            SUTANDO_KOKORO_MODEL model files).");
     Console.WriteLine("  phone                     Run the Twilio phone bridge on :3100 (needs TWILIO_AUTH_TOKEN; Media Streams → Gemini Live).");
     Console.WriteLine("  api                       Run the HTTP task-submission API on :7843 (bearer auth via SUTANDO_API_TOKEN).");
     Console.WriteLine("  dashboard                 Run the read-only status dashboard on :7844 (SignalR live updates).");
