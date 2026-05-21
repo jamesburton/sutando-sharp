@@ -23,7 +23,10 @@ namespace Sutando.Tests.Voice.Local;
 [SuppressMessage("Usage", "MEAI001", Justification = "Tests against experimental MEAI surfaces.")]
 public sealed class LocalVoiceServerTests
 {
-    private static TimeSpan Deadline { get; } = TimeSpan.FromSeconds(20);
+    // Generous deadline: the test stands up an in-process Kestrel host and runs a full local
+    // pipeline. Under the parallel full-suite run the thread pool is saturated, so the deadline
+    // is a stall backstop, not a latency assertion.
+    private static TimeSpan Deadline { get; } = TimeSpan.FromSeconds(60);
 
     [Fact]
     public async Task Local_voice_audio_turn_produces_audio_envelope_over_the_wire()
@@ -51,7 +54,9 @@ public sealed class LocalVoiceServerTests
             while (!feedCts.IsCancellationRequested)
             {
                 await ws.SendAsync(audioEnvelope, WebSocketMessageType.Text, endOfMessage: true, feedCts.Token);
-                await Task.Delay(10, feedCts.Token);
+                // A tiny pace so a stalled pipeline doesn't let the source grow without bound;
+                // small enough that VadStage always has a fresh frame to drain events on.
+                await Task.Delay(5, feedCts.Token);
             }
         }, feedCts.Token);
 

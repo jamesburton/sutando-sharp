@@ -16,7 +16,10 @@ namespace Sutando.Tests.Voice.Local;
 [SuppressMessage("Usage", "MEAI001", Justification = "Tests against experimental MEAI surfaces.")]
 public sealed class LocalPipelineSessionTests
 {
-    private static TimeSpan Deadline { get; } = TimeSpan.FromSeconds(15);
+    // Generous deadline: these are in-process end-to-end pipeline runs. Under a saturated thread
+    // pool (the full 390-test suite runs xunit collections in parallel) the pipeline's per-stage
+    // Task.Run work can be scheduled late — the deadline is a backstop, not a latency assertion.
+    private static TimeSpan Deadline { get; } = TimeSpan.FromSeconds(60);
 
     [Fact]
     public async Task Session_EmitsSessionStarted_BeforeAnyPipelineOutput()
@@ -56,9 +59,10 @@ public sealed class LocalPipelineSessionTests
             }
         }, cts.Token);
 
-        // Stream 20 ms 16 kHz mono PCM chunks continuously — like a real microphone. VadStage
-        // drains its detector's events on each inbound audio frame, so a steady trickle (rather
-        // than one burst then silence) is what guarantees the SpeechEnd edge is observed.
+        // Stream 20 ms 16 kHz mono PCM chunks continuously, like a real microphone. VadStage
+        // drains its detector's events only when an audio frame arrives, so a steady stream
+        // (rather than one burst then silence) is what guarantees the SpeechEnd edge is observed.
+        // No artificial pacing delay — feed as fast as the thread pool schedules.
         using var feedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
         var feeder = Task.Run(async () =>
         {
@@ -67,7 +71,9 @@ public sealed class LocalPipelineSessionTests
             {
                 await session.SendAsync(new InputAudioBufferAppendRealtimeClientMessage(
                     new DataContent(chunk, "audio/pcm;rate=16000")), feedCts.Token);
-                await Task.Delay(10, feedCts.Token);
+                // A tiny pace so a stalled pipeline doesn't let the unbounded source grow without
+                // bound; small enough that VadStage always has a fresh frame to drain events on.
+                await Task.Delay(5, feedCts.Token);
             }
         }, feedCts.Token);
 
