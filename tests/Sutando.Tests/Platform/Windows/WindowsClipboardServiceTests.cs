@@ -9,6 +9,7 @@ namespace Sutando.Tests.Platform.Windows;
 /// never leave a foreign payload on the operator's clipboard.
 /// </summary>
 [SupportedOSPlatform("windows")]
+[Collection(WindowsClipboardCollection.Name)]
 public sealed class WindowsClipboardServiceTests : IDisposable
 {
     private readonly WindowsClipboardService _clipboard = new();
