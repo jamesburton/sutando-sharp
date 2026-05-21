@@ -48,24 +48,30 @@ execution semantics (including the `Inline | Background` distinction modelled on
 
 ## What's IN scope
 
-- `IRealtimeTransport` interface modelled on bodhi's `LLMTransport`.
-- `GeminiLiveTransport` — concrete adapter over `MultiModalLiveClient`. Builds the
-  `BidiGenerateContentSetup` envelope by hand (model, voice config, system instruction, tools,
-  input/output transcription, session-resumption handle) so the on-the-wire payload matches the
-  one bodhi sends.
+`Sutando.Realtime` is a provider-agnostic realtime voice client converged onto
+Microsoft.Extensions.AI's `IRealtimeClient` / `IRealtimeClientSession`, plus the
+consumer-facing `VoiceSession` orchestration layer:
+
+- `GeminiLiveRealtimeClient` / `GeminiLiveRealtimeClientSession` — the Gemini Live
+  adapter, split along MEAI's client/session boundary (the client holds auth + model id;
+  each `CreateSessionAsync` mints a per-WebSocket session).
 - `RealtimeSessionConfig`, `RealtimeAudioConfig`, `RealtimeInput`, `ToolResponse`,
-  `RealtimeToolDefinition`, `RealtimeToolHandler` records + delegates.
-- `RealtimeServerEvent` discriminated union covering: setup-complete, audio-output,
-  input/output transcription, interrupted, turn-complete, grounding-metadata, tool-call,
-  tool-call-cancellation, go-away, session-resumption-update, transport-closed, transport-error.
-- `VoiceSession` with `Idle → Connecting → Listening ⇄ Speaking → Disconnected | Failed`
-  state machine, state-change event, tool-call dispatch, resumption-handle caching for
+  `RealtimeToolDefinition`, `RealtimeToolHandler` — the consumer-facing record/delegate surface.
+- `RealtimeServerEvent` — the consumer-facing discriminated union (setup-complete,
+  audio-output, input/output transcription, interrupted, turn-complete, grounding-metadata,
+  tool-call, tool-call-cancellation, go-away, session-resumption-update, transport-closed,
+  transport-error); `MeaiToSutandoEventAdapter` translates MEAI server messages into it.
+- `VoiceSession` with the `Idle → Connecting → Listening ⇄ Speaking → Disconnected | Failed`
+  state machine, state-change event, tool-call dispatch, and resumption-handle caching for
   the next reconnect.
-- 11 unit tests for JSON-frame → event mapping (`GeminiPayloadMapperTests`).
-- 10 unit tests for the state machine + tool dispatch via an in-process fake transport
-  (`VoiceSessionStateMachineTests`).
-- 1 `[Fact(Skip = ...)]` integration test (`GeminiLiveIntegrationTests`) — flip the `Skip`
-  attribute and set `GEMINI_API_KEY` to validate end-to-end against the real endpoint.
+- Unit tests for JSON-frame → event mapping (`GeminiPayloadMapperTests`) and for the state
+  machine + tool dispatch via an in-process fake (`VoiceSessionStateMachineTests`), plus a
+  `[Fact(Skip = ...)]` integration test (`GeminiLiveIntegrationTests`) — flip the `Skip`
+  and set `GEMINI_API_KEY` to validate end-to-end against the real endpoint.
+
+For the exact type-by-type and event-by-event mapping onto MEAI — and the deliberate
+deviations from MEAI's contract — see [`MAPPING.md`](./MAPPING.md), the source of truth
+for the current design.
 
 ## What's DEFERRED to the follow-up phase
 
