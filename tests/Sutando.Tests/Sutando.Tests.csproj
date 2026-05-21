@@ -65,6 +65,10 @@
     <ProjectReference Include="..\..\src\Sutando.Api\Sutando.Api.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Dashboard\Sutando.Dashboard.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Voice\Sutando.Voice.csproj" />
+    <!-- Sutando.Voice.Local is the local-inference voice transport (phase #21). Pulled in
+         transitively via Sutando.Voice, but referenced explicitly so the LocalPipeline tests
+         can construct its types directly. Added to Sutando.sln by the integration phase. -->
+    <ProjectReference Include="..\..\src\Sutando.Voice.Local\Sutando.Voice.Local.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Phone\Sutando.Phone.csproj" />
     <!-- Sutando.AppHost is the Aspire 13 orchestrator. The tests in tests/AppHost/ reflect on
          its compiled entry-point via Aspire.Hosting.Testing, so a ProjectReference is required

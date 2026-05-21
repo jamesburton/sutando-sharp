@@ -52,11 +52,13 @@ sandboxed executor.
 
 | Verb | Port | What |
 |---|---|---|
-| `sutando voice` | 9900 | WebSocket fan-out at `/voice`. One `VoiceSession` per browser connection, bridging to Gemini Live. `/healthz` reports session count. Wire protocol documented in [`voice-wire-protocol.md`](voice-wire-protocol.md). |
+| `sutando voice [--local]` | 9900 | WebSocket fan-out at `/voice`. One `VoiceSession` per browser connection. By default each session bridges to Gemini Live. With `--local`, the session is driven by the in-process local-inference pipeline (STT → Chat → TTS) — no cloud calls. `/healthz` reports session count. Wire protocol documented in [`voice-wire-protocol.md`](voice-wire-protocol.md). |
 | `sutando api` | 7843 | HTTP task submission. `POST /tasks` writes an envelope; `GET /tasks/{id}` returns task + result; `GET /tasks` lists pending; `GET /status` echoes `core-status.json`. Bearer auth via `SUTANDO_API_TOKEN`; `/healthz` is always open. |
 | `sutando dashboard` | 7844 | Read-only status page with SignalR live push for `core_status_changed`, `task_added`, `result_added`. No auth — local read-only by intent. |
 
 Port overrides: `--port <n>` flag, `SUTANDO_VOICE_PORT` / `SUTANDO_API_PORT` / `SUTANDO_DASHBOARD_PORT` env vars.
+
+Local-inference voice (`sutando voice --local`): set the `--local` flag (or `SUTANDO_VOICE_LOCAL=1`) to run the voice loop entirely on-host. The four model files are resolved from env vars — `SUTANDO_WHISPER_MODEL` (Whisper GGML), `SUTANDO_LLAMA_MODEL` (GGUF chat model), `SUTANDO_KOKORO_MODEL` (Kokoro ONNX), and optionally `SUTANDO_SILERO_MODEL` (Silero VAD ONNX; auto-downloaded when unset). When a model is missing the WebSocket handshake still completes and the browser receives a clear `error` envelope instead of the server crashing.
 
 ## Browser
 

@@ -78,7 +78,11 @@ public sealed class VoiceWebSocketHandler
         try
         {
             var opts = _options.Value;
-            if (string.IsNullOrWhiteSpace(opts.ApiKey))
+
+            // The API-key gate only applies to the cloud Gemini transport. In --local mode there
+            // is no API key; the local-inference transport surfaces any model-config problem
+            // itself (as an `error` envelope after the handshake — see LocalPipelineTransportFactory).
+            if (!opts.UseLocal && string.IsNullOrWhiteSpace(opts.ApiKey))
             {
                 // Surfaces back to the browser before we even try to connect to Gemini — a missing
                 // key is an operator configuration problem, not a Gemini-side fault.
