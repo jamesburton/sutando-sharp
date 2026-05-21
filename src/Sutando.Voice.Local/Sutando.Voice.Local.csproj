@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Sutando.Voice.Local</RootNamespace>
+    <PackageId>Sutando.Voice.Local</PackageId>
+    <Title>Sutando — local-inference voice transport</Title>
+    <Description>The `sutando voice --local` transport: an IRealtimeClient implementation that drives the voice WebSocket server through Sutando.Pipeline (STT → Chat → TTS) and the in-process local-inference adapters, instead of a cloud realtime API. Lets the whole voice loop run on the developer's machine with no cloud calls.</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!-- MEAI001 marks IRealtimeClient / IRealtimeClientSession / ISpeechToTextClient /
+         ITextToSpeechClient as experimental in MEAI 10.6 — the surfaces this transport
+         implements and consumes. SUTANDO001 covers Sutando.Pipeline / Sutando.LocalInference.
+         Suppress at the project level so consumers don't have to. -->
+    <NoWarn>$(NoWarn);MEAI001;SUTANDO001</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Sutando.Pipeline supplies the IPipelineStage contract + the STT / Chat / TTS stages
+         this transport composes. Sutando.Realtime supplies the IRealtimeClient seam the
+         voice WS server already speaks. -->
+    <ProjectReference Include="..\Sutando.Pipeline\Sutando.Pipeline.csproj" />
+    <ProjectReference Include="..\Sutando.Realtime\Sutando.Realtime.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="10.6.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sutando.Tests" />
+  </ItemGroup>
+
+</Project>
