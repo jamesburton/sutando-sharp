@@ -1,6 +1,7 @@
 using Sutando.Skills;
 using Sutando.Skills.Cloud;
 using Sutando.Skills.Cloud.Google;
+using Sutando.Skills.Cloud.OpenAI;
 
 namespace Sutando.Tests.Skills.Cloud;
 
@@ -32,6 +33,33 @@ public sealed class CloudSkillRegistrationTests
         var skill = registry.TryGet("gemini-tts");
         Assert.NotNull(skill);
         Assert.IsType<GeminiTextToSpeechSkill>(skill);
+    }
+
+    [Fact]
+    public void Register_WithOpenAiApiKey_RegistersOpenAiTtsOnly()
+    {
+        var registry = new SkillRegistry();
+        var registered = CloudSkillRegistration.Register(registry,
+            new Dictionary<string, string> { [OpenAiTextToSpeechSkill.ApiKeyEnvVar] = "sk-fake" });
+
+        Assert.Equal(["openai-tts"], registered);
+        Assert.IsType<OpenAiTextToSpeechSkill>(registry.TryGet("openai-tts"));
+        Assert.Null(registry.TryGet("gemini-tts"));
+    }
+
+    [Fact]
+    public void Register_WithBothApiKeys_RegistersBothSkills()
+    {
+        var registry = new SkillRegistry();
+        var registered = CloudSkillRegistration.Register(registry, new Dictionary<string, string>
+        {
+            [GeminiTextToSpeechSkill.ApiKeyEnvVar] = "fake-key",
+            [OpenAiTextToSpeechSkill.ApiKeyEnvVar] = "sk-fake",
+        });
+
+        Assert.Contains("gemini-tts", registered);
+        Assert.Contains("openai-tts", registered);
+        Assert.Equal(2, registered.Count);
     }
 
     [Fact]

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Sutando.Skills.Cloud.Google;
+using Sutando.Skills.Cloud.OpenAI;
 
 namespace Sutando.Skills.Cloud;
 
@@ -73,5 +74,6 @@ public static class CloudSkillRegistration
     private static readonly IReadOnlyList<Entry> Entries =
     [
         new Entry([GeminiTextToSpeechSkill.ApiKeyEnvVar], () => new GeminiTextToSpeechSkill()),
+        new Entry([OpenAiTextToSpeechSkill.ApiKeyEnvVar], () => new OpenAiTextToSpeechSkill()),
     ];
 }

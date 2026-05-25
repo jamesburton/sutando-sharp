@@ -100,7 +100,7 @@ public sealed class GeminiTextToSpeechSkillTests : IDisposable
         Assert.Contains("key=fake-key", request.RequestUri.Query);
 
         // Body contains the requested text and voice.
-        var sentBody = await request.Content!.ReadAsStringAsync(CancellationToken.None);
+        var sentBody = request.BodyAsString();
         Assert.Contains("hello world", sentBody);
         Assert.Contains("\"voiceName\":\"Kore\"", sentBody);
     }
