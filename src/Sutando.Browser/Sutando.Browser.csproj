@@ -5,6 +5,14 @@
     <PackageId>Sutando.Browser</PackageId>
     <Title>Sutando — Playwright-based browser automation</Title>
     <Description>Lightweight Playwright wrapper that mirrors the upstream Sutando browser action grammar (text, screenshot, pdf, html, click, fill, select, wait) for the .NET port.</Description>
+    <!--
+      Microsoft.Playwright drops a `playwright.ps1` bootstrap script next to the build output;
+      the script `Reflection.Assembly.Load`s `Microsoft.Playwright.dll` from the same directory.
+      Library projects don't copy NuGet dependencies to bin by default, so a fresh
+      `playwright install` invocation against this project fails. Copying lock-file assemblies
+      lands the DLL next to the script and lets the CI step work — see .github/workflows/ci.yml.
+    -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
