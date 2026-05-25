@@ -3,6 +3,7 @@ using Sutando.Skills.Cloud;
 using Sutando.Skills.Cloud.Common;
 using Sutando.Skills.Cloud.Google;
 using Sutando.Skills.Cloud.OpenAI;
+using Sutando.Skills.Cloud.Orchestration;
 using Sutando.Skills.Cloud.Twitter;
 
 namespace Sutando.Tests.Skills.Cloud;
@@ -37,8 +38,10 @@ public sealed class CloudSkillRegistrationTests
 
         Assert.Contains("gemini-tts", registered);
         Assert.Contains("image-generation", registered);
+        Assert.Contains("make-viral-video", registered);
         Assert.IsType<GeminiTextToSpeechSkill>(registry.TryGet("gemini-tts"));
         Assert.IsType<GeminiImageGenerationSkill>(registry.TryGet("image-generation"));
+        Assert.IsType<MakeViralVideoSkill>(registry.TryGet("make-viral-video"));
     }
 
     [Fact]
@@ -68,6 +71,7 @@ public sealed class CloudSkillRegistrationTests
         Assert.Contains("gemini-tts", registered);
         Assert.Contains("openai-tts", registered);
         Assert.Contains("image-generation", registered);
+        Assert.Contains("make-viral-video", registered);
     }
 
     [Fact]
