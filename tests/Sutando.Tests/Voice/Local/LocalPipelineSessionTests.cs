@@ -12,6 +12,8 @@ namespace Sutando.Tests.Voice.Local;
 /// <see cref="IRealtimeClientSession.GetStreamingResponseAsync"/>. Fakes stand in for the four
 /// stage components so no real model files are needed.
 /// </summary>
+// Heavy in-process pipeline test — see LocalVoiceServerTests for the InProcessHost rationale.
+[Trait("Category", "InProcessHost")]
 [SuppressMessage("Usage", "SUTANDO001", Justification = "Tests for our own experimental surface.")]
 [SuppressMessage("Usage", "MEAI001", Justification = "Tests against experimental MEAI surfaces.")]
 public sealed class LocalPipelineSessionTests
@@ -62,7 +64,6 @@ public sealed class LocalPipelineSessionTests
         // Stream 20 ms 16 kHz mono PCM chunks continuously, like a real microphone. VadStage
         // drains its detector's events only when an audio frame arrives, so a steady stream
         // (rather than one burst then silence) is what guarantees the SpeechEnd edge is observed.
-        // No artificial pacing delay — feed as fast as the thread pool schedules.
         using var feedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
         var feeder = Task.Run(async () =>
         {
@@ -71,9 +72,11 @@ public sealed class LocalPipelineSessionTests
             {
                 await session.SendAsync(new InputAudioBufferAppendRealtimeClientMessage(
                     new DataContent(chunk, "audio/pcm;rate=16000")), feedCts.Token);
-                // A tiny pace so a stalled pipeline doesn't let the unbounded source grow without
-                // bound; small enough that VadStage always has a fresh frame to drain events on.
-                await Task.Delay(5, feedCts.Token);
+                // Pace at the real 20 ms PCM chunk cadence (640 B @ 16 kHz / 16-bit / mono = 20 ms).
+                // The BracketingVadDetector closes the turn on a frame *count* (SpeechEndAfterFrame),
+                // not wall-clock, so pacing only governs thread-pool pressure — feeding faster than
+                // real time just inflicts needless continuation churn on the already-saturated pool.
+                await Task.Delay(20, feedCts.Token);
             }
         }, feedCts.Token);
 

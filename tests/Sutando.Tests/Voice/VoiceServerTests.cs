@@ -12,6 +12,8 @@ namespace Sutando.Tests.Voice;
 /// <see cref="VoiceTestHost"/>, connects a real WS client, and asserts on the round-tripped JSON
 /// envelopes and the fake transport's recorded calls.
 /// </summary>
+// Heavy in-process host test — see LocalVoiceServerTests for the InProcessHost rationale.
+[Trait("Category", "InProcessHost")]
 public sealed class VoiceServerTests
 {
     private static TimeSpan ShortDeadline { get; } = TimeSpan.FromSeconds(10);

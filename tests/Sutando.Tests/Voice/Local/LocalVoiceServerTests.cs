@@ -19,6 +19,16 @@ namespace Sutando.Tests.Voice.Local;
 /// <see cref="LocalPipelineRealtimeClient"/>s backed by fakes — no real model files, but the
 /// full WS handler → VoiceSession → local pipeline → wire-envelope path exercised.
 /// </summary>
+// Heavy in-process E2E test: stands up a Kestrel host and drives a full multi-stage local
+// pipeline (VAD → STT → chat → TTS) through `Task.Run`/`Task.Yield` per stage. When this runs
+// concurrently with the parallel main suite (412 tests across many xUnit collections) the
+// thread pool saturates and the pipeline's per-stage continuations starve — the test consumes
+// its full deadline without ever producing an audio envelope. Isolated, it finishes in ~2 s.
+//
+// The `Category=InProcessHost` trait gates this (and its pipeline-only sibling
+// LocalPipelineSessionTests, and the Realtime VoiceServerTests) into a separate CI test pass —
+// see .github/workflows/ci.yml — so the heavy E2E hosts run uncontended.
+[Trait("Category", "InProcessHost")]
 [SuppressMessage("Usage", "SUTANDO001", Justification = "Tests for our own experimental surface.")]
 [SuppressMessage("Usage", "MEAI001", Justification = "Tests against experimental MEAI surfaces.")]
 public sealed class LocalVoiceServerTests
@@ -54,9 +64,11 @@ public sealed class LocalVoiceServerTests
             while (!feedCts.IsCancellationRequested)
             {
                 await ws.SendAsync(audioEnvelope, WebSocketMessageType.Text, endOfMessage: true, feedCts.Token);
-                // A tiny pace so a stalled pipeline doesn't let the source grow without bound;
-                // small enough that VadStage always has a fresh frame to drain events on.
-                await Task.Delay(5, feedCts.Token);
+                // Pace at the real 20 ms PCM chunk cadence (640 B @ 16 kHz / 16-bit / mono = 20 ms).
+                // The BracketingVadDetector closes the turn on a frame *count* (SpeechEndAfterFrame),
+                // not wall-clock, so pacing only governs thread-pool pressure — feeding faster than
+                // real time just inflicts needless continuation churn on the already-saturated pool.
+                await Task.Delay(20, feedCts.Token);
             }
         }, feedCts.Token);
 

@@ -64,8 +64,20 @@ jobs:
       # everywhere plus net10.0-windows10.0.19041.0 only on Windows runners. The default
       # TRX logger emits filenames like `<user>_<host>_<datetime>_<framework>.trx`, so the
       # two TFMs on Windows produce non-colliding files without any custom naming.
-      - name: Test
-        run: dotnet test Sutando.sln -c Release --no-build --logger trx --results-directory TestResults
+      #
+      # Two-pass test invocation: the main suite runs in parallel as fast as possible, then the
+      # heavy in-process-host tests (Voice.Local pair, Realtime VoiceServerTests) run in their
+      # own pass so they don't compete with the parallel suite for the thread pool — see
+      # tests/Sutando.Tests/Voice/Local/LocalVoiceServerTests.cs for why. Each pass writes its
+      # TRX files into a sub-directory so the two don't collide on disk.
+      - name: Test (fast suite, excl. InProcessHost)
+        run: dotnet test Sutando.sln -c Release --no-build --filter "Category!=InProcessHost" --logger trx --results-directory TestResults/fast
+
+      - name: Test (InProcessHost only, uncontended)
+        # `if: always()` so the heavy pass still runs even if the fast suite fails — both
+        # results are useful when triaging.
+        if: always()
+        run: dotnet test Sutando.sln -c Release --no-build --filter "Category=InProcessHost" --logger trx --results-directory TestResults/host
 
       # Packing + dnx smoke test only run on Windows. The Cli ships as a single canonical
       # nupkg from one OS; the dnx round-trip on the other runners would only re-test the
@@ -87,7 +99,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ matrix.os }}
-          path: TestResults/*.trx
+          path: TestResults/**/*.trx
 
       - name: Upload nuget packages (windows only — single canonical copy)
         if: matrix.os == 'windows-latest'
