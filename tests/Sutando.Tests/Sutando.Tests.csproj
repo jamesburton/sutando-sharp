@@ -55,6 +55,7 @@
     <ProjectReference Include="..\..\src\Sutando.Channels.Discord\Sutando.Channels.Discord.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Realtime\Sutando.Realtime.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Skills\Sutando.Skills.csproj" />
+    <ProjectReference Include="..\..\src\Sutando.Skills.Cloud\Sutando.Skills.Cloud.csproj" />
     <ProjectReference Include="..\..\src\Sutando.LocalInference.Abstractions\Sutando.LocalInference.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\Sutando.LocalInference.WhisperNet\Sutando.LocalInference.WhisperNet.csproj" />
     <ProjectReference Include="..\..\src\Sutando.LocalInference.KokoroSharp\Sutando.LocalInference.KokoroSharp.csproj" />
