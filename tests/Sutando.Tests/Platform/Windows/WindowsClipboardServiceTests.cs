@@ -46,10 +46,15 @@ public sealed class WindowsClipboardServiceTests : IDisposable
 
         var roundTripped = await _clipboard.GetTextAsync();
 
-        // Clipboard managers can pass the probe (sentinel was undisturbed) but still intercept the
-        // payload microseconds later. When that race materialises, skip rather than fail — the
-        // mismatch reflects host config, not our code. See ClipboardIsRoundTrippableAsync remarks.
-        Skip.IfNot(roundTripped == payload, "clipboard-manager interference detected during assertion phase; skipping");
+        // Clipboard managers can pass the initial probe but still intercept the payload microseconds
+        // later. If the round-trip mismatches AND a re-probe now reports interference, the host
+        // changed state mid-test — skip. If the re-probe still reports clean (i.e. only OUR payload
+        // was intercepted), fall through to Assert.Equal so a genuine bug still fails loudly.
+        if (roundTripped != payload)
+        {
+            Skip.IfNot(await ClipboardIsRoundTrippableAsync(), "clipboard-manager interference detected during assertion phase; skipping");
+        }
+
         Assert.Equal(payload, roundTripped);
     }
 
@@ -64,7 +69,12 @@ public sealed class WindowsClipboardServiceTests : IDisposable
         await _clipboard.SetTextAsync(payload);
 
         var roundTripped = await _clipboard.GetTextAsync();
-        Skip.IfNot(roundTripped == payload, "clipboard-manager interference detected during assertion phase; skipping");
+
+        if (roundTripped != payload)
+        {
+            Skip.IfNot(await ClipboardIsRoundTrippableAsync(), "clipboard-manager interference detected during assertion phase; skipping");
+        }
+
         Assert.Equal(payload, roundTripped);
     }
 
