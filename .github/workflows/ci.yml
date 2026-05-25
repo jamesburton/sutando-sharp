@@ -96,11 +96,13 @@ jobs:
 
       # Pin to the freshly-packed version (driven by the job-scoped VersionSuffix above) so
       # the smoke test always exercises THIS build rather than any stale package cached
-      # under the runner's home dir.
+      # under the runner's home dir. Note: .NET 10's `dnx` rejects --prerelease alongside
+      # --version (they're mutually exclusive — `--version` takes a literal version string,
+      # including pre-release suffixes, with no further opt-in required).
       - name: Smoke test (dnx round-trip)
         if: matrix.os == 'windows-latest'
         shell: bash
-        run: dotnet dnx Sutando.Cli --source ./nuget-local --prerelease --version "0.1.0-${VersionSuffix}" -- version
+        run: dotnet dnx Sutando.Cli --source ./nuget-local --version "0.1.0-${VersionSuffix}" -- version
 
       - name: Upload test results
         if: always()

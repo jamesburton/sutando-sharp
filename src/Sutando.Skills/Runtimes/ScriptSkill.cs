@@ -175,16 +175,29 @@ public sealed class ScriptSkill : ISkill
         {
             try
             {
-                var parsed = JsonSerializer.Deserialize<ResultEnvelope>(jsonCandidate, JsonOptions);
-                if (parsed is not null)
+                using var doc = JsonDocument.Parse(jsonCandidate);
+                // Only treat the JSON as a result envelope if it carries at least one of the
+                // canonical fields — otherwise a script that incidentally echoes a JSON object
+                // (e.g. our own invocation envelope round-tripped through `cat`) would be
+                // silently parsed as a defaulted ResultEnvelope and its content swallowed.
+                var hasEnvelopeField =
+                    doc.RootElement.TryGetProperty("success", out _) ||
+                    doc.RootElement.TryGetProperty("body", out _) ||
+                    doc.RootElement.TryGetProperty("error", out _) ||
+                    doc.RootElement.TryGetProperty("artifacts", out _);
+                if (hasEnvelopeField)
                 {
-                    var bodyPreamble = lastNewline >= 0 ? trimmed[..lastNewline].TrimEnd() : string.Empty;
-                    var body = string.IsNullOrEmpty(parsed.Body)
-                        ? bodyPreamble
-                        : (bodyPreamble.Length == 0 ? parsed.Body : bodyPreamble + "\n" + parsed.Body);
-                    return parsed.Success
-                        ? SkillResult.Ok(body, duration, parsed.Artifacts ?? [])
-                        : SkillResult.Fail(parsed.Error ?? "skill reported failure", duration, body);
+                    var parsed = doc.RootElement.Deserialize<ResultEnvelope>(JsonOptions);
+                    if (parsed is not null)
+                    {
+                        var bodyPreamble = lastNewline >= 0 ? trimmed[..lastNewline].TrimEnd() : string.Empty;
+                        var body = string.IsNullOrEmpty(parsed.Body)
+                            ? bodyPreamble
+                            : (bodyPreamble.Length == 0 ? parsed.Body : bodyPreamble + "\n" + parsed.Body);
+                        return parsed.Success
+                            ? SkillResult.Ok(body, duration, parsed.Artifacts ?? [])
+                            : SkillResult.Fail(parsed.Error ?? "skill reported failure", duration, body);
+                    }
                 }
             }
             catch (JsonException)
