@@ -1,3 +1,4 @@
+using Sutando.Notes;
 using Sutando.Skills;
 using Sutando.Skills.Cloud;
 using Sutando.Skills.Discovery;
@@ -54,7 +55,12 @@ internal static class SkillsHost
         // 2. Assembly-level cloud skills — gated on the env vars each skill declares.
         var cloudIds = CloudSkillRegistration.Register(registry, env);
 
-        var report = new SkillsHostReport(diskIds, cloudIds);
+        // 3. Notes second-brain skills — always registered; backed by the workspace's notes/ dir.
+        var notesStore = new FileSystemNoteStore(workspace);
+        var notesService = new NotesService(notesStore);
+        var notesIds = NotesSkillRegistration.RegisterAll(registry, notesService, notesStore);
+
+        var report = new SkillsHostReport(diskIds, cloudIds, notesIds);
         return (registry, report);
     }
 
@@ -78,6 +84,8 @@ internal static class SkillsHost
 /// </summary>
 /// <param name="DiskIds">Skill IDs loaded from the workspace and user filesystem roots.</param>
 /// <param name="CloudIds">Skill IDs registered from the cloud-skills assembly (env-var gated).</param>
+/// <param name="NotesIds">Skill IDs registered from the notes second-brain library (always on).</param>
 internal sealed record SkillsHostReport(
     IReadOnlyList<string> DiskIds,
-    IReadOnlyList<string> CloudIds);
+    IReadOnlyList<string> CloudIds,
+    IReadOnlyList<string> NotesIds);

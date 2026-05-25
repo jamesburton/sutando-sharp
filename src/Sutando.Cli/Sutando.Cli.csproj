@@ -29,6 +29,7 @@
     <ProjectReference Include="..\Sutando.Voice\Sutando.Voice.csproj" />
     <ProjectReference Include="..\Sutando.Phone\Sutando.Phone.csproj" />
     <ProjectReference Include="..\Sutando.Skills.Cloud\Sutando.Skills.Cloud.csproj" />
+    <ProjectReference Include="..\Sutando.Notes\Sutando.Notes.csproj" />
   </ItemGroup>
 
 </Project>
