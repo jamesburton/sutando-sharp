@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Sutando.Realtime;
+using Sutando.Voice.Skills;
 
 namespace Sutando.Voice;
 
@@ -34,17 +35,25 @@ public sealed class VoiceWebSocketHandler
     private readonly VoiceSessionTracker _tracker;
     private readonly IOptions<VoiceOptions> _options;
     private readonly ILogger<VoiceWebSocketHandler> _logger;
+    private readonly SkillRegistryVoiceBridge? _skillBridge;
 
     /// <summary>Creates a new handler. Registered as a singleton in <see cref="VoiceServer"/>; each WS connection re-uses the instance.</summary>
     /// <param name="transportFactory">Factory the handler hands to every <see cref="VoiceSession"/>.</param>
     /// <param name="tracker">Active-session counter — surfaced through <c>/healthz</c>.</param>
     /// <param name="options">Bound voice options (port, api key, model, voice name, system instruction).</param>
     /// <param name="logger">Logger.</param>
+    /// <param name="skillBridge">
+    /// Optional skill-registry bridge. When supplied, every voice session advertises the registry's
+    /// tools to the model and routes inbound tool calls through the bridge's dispatcher. When
+    /// <see langword="null"/> (no bridge in DI), the voice path is unchanged — no tools advertised,
+    /// no tool dispatch routing. Wire one up via <c>AddSkillRegistryVoiceBridge</c>.
+    /// </param>
     public VoiceWebSocketHandler(
         IRealtimeTransportFactory transportFactory,
         VoiceSessionTracker tracker,
         IOptions<VoiceOptions> options,
-        ILogger<VoiceWebSocketHandler> logger)
+        ILogger<VoiceWebSocketHandler> logger,
+        SkillRegistryVoiceBridge? skillBridge = null)
     {
         ArgumentNullException.ThrowIfNull(transportFactory);
         ArgumentNullException.ThrowIfNull(tracker);
@@ -55,6 +64,7 @@ public sealed class VoiceWebSocketHandler
         _tracker = tracker;
         _options = options;
         _logger = logger;
+        _skillBridge = skillBridge;
     }
 
     /// <summary>
@@ -96,11 +106,22 @@ public sealed class VoiceWebSocketHandler
             // connection lifecycle (and keeps the in-process test fakes ergonomic — see
             // VoiceTestHost.FakeFactory).
             var session = new VoiceSession(client: _transportFactory.Create(), ownsClient: true);
+
+            // Skill-tool wiring — only when a SkillRegistryVoiceBridge is in the DI container.
+            // Tools must be registered before ConnectAsync so the model sees them in the setup
+            // envelope. Pull definitions onto the config; register handlers against the session.
+            var tools = _skillBridge?.GetToolDefinitions();
+            if (_skillBridge is not null && tools is { Count: > 0 })
+            {
+                _skillBridge.RegisterWith(session);
+            }
+
             var config = new RealtimeSessionConfig(
                 Model: opts.Model,
                 ApiKey: opts.ApiKey,
                 VoiceName: opts.VoiceName,
-                SystemInstruction: opts.SystemInstruction);
+                SystemInstruction: opts.SystemInstruction,
+                Tools: tools);
 
             // The outbound pump is fed by EventReceived. Wire it before ConnectAsync so we never
             // miss a setup-complete event arriving on a fast path.
