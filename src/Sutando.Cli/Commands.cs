@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using Sutando.Api;
 using Sutando.Bridge;
@@ -6,8 +7,11 @@ using Sutando.Browser;
 using Sutando.Channels.Cli;
 using Sutando.Channels.Discord;
 using Sutando.Channels.Telegram;
+using Sutando.Cli.Skills;
 using Sutando.Dashboard;
 using Sutando.Phone;
+using Sutando.Skills;
+using Sutando.Skills.Discovery;
 using Sutando.Voice;
 using Sutando.Workspace;
 
@@ -328,6 +332,144 @@ internal static class Commands
         using var cts = NewSigIntCts();
         Console.WriteLine($"sutando discord: starting (owner={options.OwnerUserId}, team-roles={options.TeamRoleIds.Count}, channels={options.AllowedChannelIds.Count}). Ctrl+C to stop.");
         await channel.RunAsync(cts.Token).ConfigureAwait(false);
+        return 0;
+    }
+
+    public static async Task<int> SkillsAsync(string[] args)
+    {
+        // Dispatch on the subverb: "list" or "run".
+        var sub = args.Length > 1 ? args[1] : string.Empty;
+
+        if (sub is "list")
+        {
+            return SkillsList(args);
+        }
+
+        if (sub is "run")
+        {
+            return await SkillsRunAsync(args).ConfigureAwait(false);
+        }
+
+        Console.Error.WriteLine("usage: sutando skills list");
+        Console.Error.WriteLine("       sutando skills run <id> [--arg key=value ...]");
+        return 64;
+    }
+
+    private static int SkillsList(string[] args)
+    {
+        _ = args;
+        var ws = WorkspaceDirectory.Resolve();
+        var (registry, _) = SkillsHost.BuildRegistry(ws);
+
+        var manifests = registry.Manifests;
+        if (manifests.Count == 0)
+        {
+            Console.WriteLine("(no skills registered — set credential env vars for cloud skills or add scripts to <workspace>/skills/)");
+            return 0;
+        }
+
+        // Compute column widths for aligned output.
+        const int MinIdWidth = 2;
+        const int MinRuntimeWidth = 7;
+
+        var idWidth = Math.Max(MinIdWidth, manifests.Max(m => m.Id.Length));
+        var runtimeWidth = Math.Max(MinRuntimeWidth, manifests.Max(m => m.Runtime.ToString().Length));
+
+        Console.WriteLine($"{"ID".PadRight(idWidth)}  {"RUNTIME".PadRight(runtimeWidth)}  {"TRIGGERS".PadRight(16)}  DESCRIPTION");
+        Console.WriteLine(new string('-', idWidth + runtimeWidth + 16 + 6 + 16));
+
+        foreach (var m in manifests.OrderBy(m => m.Id, StringComparer.Ordinal))
+        {
+            var triggers = m.Triggers.Count > 0 ? string.Join(", ", m.Triggers) : "-";
+            var desc = m.Description.Length > 0 ? m.Description : m.Name;
+            Console.WriteLine(
+                $"{m.Id.PadRight(idWidth)}  {m.Runtime.ToString().PadRight(runtimeWidth)}  {triggers.PadRight(16)}  {desc}");
+        }
+
+        return 0;
+    }
+
+    private static async Task<int> SkillsRunAsync(string[] args)
+    {
+        // args[0] = "skills", args[1] = "run", args[2] = <id>, then optional --arg key=value pairs.
+        if (args.Length < 3)
+        {
+            Console.Error.WriteLine("usage: sutando skills run <id> [--arg key=value ...]");
+            return 64;
+        }
+
+        var id = args[2];
+
+        // Parse --arg key=value entries from the remainder of the arg list.
+        var arguments = new Dictionary<string, string>(StringComparer.Ordinal);
+        for (var i = 3; i < args.Length; i++)
+        {
+            if (args[i] != "--arg")
+            {
+                Console.Error.WriteLine($"sutando skills run: unexpected argument '{args[i]}'; expected --arg key=value");
+                return 64;
+            }
+            if (i + 1 >= args.Length)
+            {
+                Console.Error.WriteLine("sutando skills run: --arg requires a key=value operand");
+                return 64;
+            }
+            i++;
+            var pair = args[i];
+            // Split on the first '=' only so values may contain '='.
+            var sep = pair.IndexOf('=', StringComparison.Ordinal);
+            if (sep <= 0)
+            {
+                Console.Error.WriteLine($"sutando skills run: malformed --arg value '{pair}' (expected key=value)");
+                return 64;
+            }
+            arguments[pair[..sep]] = pair[(sep + 1)..];
+        }
+
+        var ws = WorkspaceDirectory.Resolve();
+        // Perform the two-step build directly so we have access to each DiscoveredSkill.Root,
+        // which gives script-based skills the correct filesystem base for relative asset paths.
+        var discovered = SkillDiscovery.Default(ws).Discover();
+        var (registry, _) = SkillsHost.BuildRegistry(ws);
+        // Build an id→root lookup from disk-discovered skills.  Cloud skills fall back to the
+        // host base directory (consistent with SkillRegistry.RegisterInstance default).
+        var rootById = discovered.ToDictionary(d => d.Manifest.Id, d => d.Root, StringComparer.Ordinal);
+
+        var skill = registry.TryGet(id);
+        if (skill is null)
+        {
+            Console.Error.WriteLine($"sutando skills run: skill '{id}' is not registered.");
+            return 1;
+        }
+
+        var skillRoot = rootById.TryGetValue(id, out var diskRoot)
+            ? diskRoot
+            : AppContext.BaseDirectory;
+
+        using var cts = NewSigIntCts();
+        var ctx = new SkillContext(ws, skillRoot);
+        SkillResult result;
+        try
+        {
+            result = await skill.ExecuteAsync(ctx, arguments, cts.Token).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"sutando skills run: {ex.Message}");
+            return 1;
+        }
+
+        if (!result.Success)
+        {
+            Console.Error.WriteLine(result.Error ?? result.Body);
+            return 1;
+        }
+
+        Console.WriteLine(result.Body);
+        foreach (var artifact in result.Artifacts)
+        {
+            Console.WriteLine(artifact);
+        }
         return 0;
     }
 
