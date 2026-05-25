@@ -1,5 +1,6 @@
 using Sutando.Skills;
 using Sutando.Skills.Cloud;
+using Sutando.Skills.Cloud.Common;
 using Sutando.Skills.Cloud.Google;
 using Sutando.Skills.Cloud.OpenAI;
 using Sutando.Skills.Cloud.Twitter;
@@ -101,6 +102,42 @@ public sealed class CloudSkillRegistrationTests
 
         Assert.Contains("x-twitter", registered);
         Assert.IsType<XTwitterSkill>(registry.TryGet("x-twitter"));
+    }
+
+    [Fact]
+    public void Register_WithOnlyPartialGoogleOAuthCreds_DoesNotRegisterGmailOrCalendar()
+    {
+        // Two of the three OAuth2 env vars set, third missing — neither gmail nor calendar
+        // should appear. Verifies multi-env-var gating for the shared OAuth helper vars.
+        var registry = new SkillRegistry();
+        var registered = CloudSkillRegistration.Register(registry, new Dictionary<string, string>
+        {
+            [GoogleOAuthHelper.ClientIdEnvVar] = "client-id",
+            [GoogleOAuthHelper.ClientSecretEnvVar] = "client-secret",
+            // RefreshTokenEnvVar deliberately omitted
+        });
+
+        Assert.DoesNotContain("gmail", registered);
+        Assert.DoesNotContain("calendar", registered);
+        Assert.Null(registry.TryGet("gmail"));
+        Assert.Null(registry.TryGet("calendar"));
+    }
+
+    [Fact]
+    public void Register_WithAllGoogleOAuthCreds_RegistersGmailAndCalendar()
+    {
+        var registry = new SkillRegistry();
+        var registered = CloudSkillRegistration.Register(registry, new Dictionary<string, string>
+        {
+            [GoogleOAuthHelper.ClientIdEnvVar] = "client-id",
+            [GoogleOAuthHelper.ClientSecretEnvVar] = "client-secret",
+            [GoogleOAuthHelper.RefreshTokenEnvVar] = "refresh-token",
+        });
+
+        Assert.Contains("gmail", registered);
+        Assert.Contains("calendar", registered);
+        Assert.IsType<GmailSkill>(registry.TryGet("gmail"));
+        Assert.IsType<CalendarSkill>(registry.TryGet("calendar"));
     }
 
     [Fact]
