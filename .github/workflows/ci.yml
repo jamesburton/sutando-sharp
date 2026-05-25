@@ -46,6 +46,14 @@ jobs:
           restore-keys: |
             nuget-${{ runner.os }}-
 
+      # NuGet.config declares the local `nuget-local/` package source unconditionally — it's
+      # populated by the Pack step below, but Restore runs first and NU1301s if the directory
+      # is absent on a fresh runner. Pre-create it (cross-shell: `mkdir -p` on POSIX is the
+      # GitHub-actions default `bash` shell on Windows too).
+      - name: Ensure local nuget source dir exists
+        shell: bash
+        run: mkdir -p nuget-local
+
       - name: Restore
         run: dotnet restore Sutando.sln
 
