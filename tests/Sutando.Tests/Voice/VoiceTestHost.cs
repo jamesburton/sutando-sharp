@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Sutando.Realtime;
 using Sutando.Tests.Realtime;
 using Sutando.Voice;
+using Sutando.Voice.Skills;
 
 namespace Sutando.Tests.Voice;
 
@@ -17,6 +18,14 @@ namespace Sutando.Tests.Voice;
 internal sealed class VoiceTestHost : WebApplicationFactory<Program>
 {
     public FakeFactory Factory { get; } = new();
+
+    /// <summary>
+    /// Optional skill-tool bridge to register in the test host's DI container. When non-null at
+    /// host build time, <see cref="VoiceWebSocketHandler"/> picks it up via its optional ctor
+    /// parameter, advertises the bridge's tool definitions to the model, and routes inbound
+    /// tool calls through the bridge dispatcher. Default null = unchanged voice path.
+    /// </summary>
+    public SkillRegistryVoiceBridge? SkillBridge { get; set; }
 
     public VoiceTestHost()
     {
@@ -31,6 +40,11 @@ internal sealed class VoiceTestHost : WebApplicationFactory<Program>
         {
             services.RemoveAll<IRealtimeTransportFactory>();
             services.AddSingleton<IRealtimeTransportFactory>(Factory);
+
+            if (SkillBridge is { } bridge)
+            {
+                services.AddSingleton(bridge);
+            }
         });
     }
 

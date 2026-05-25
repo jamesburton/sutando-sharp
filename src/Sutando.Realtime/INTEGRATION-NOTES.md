@@ -104,6 +104,62 @@ orchestration. They are explicitly not in the transport-only slice.
 7. **OpenAI Realtime / ElevenLabs STT transports** — only `GeminiLiveTransport` is provided.
    `IRealtimeTransport` is provider-agnostic, so adding these later is additive.
 
+## Skill-tool bridge
+
+> Adapter + bridge live in `Sutando.Voice/Skills/`, not in `Sutando.Realtime`. Rationale:
+> `Sutando.Phone` also depends on `Sutando.Realtime`, and pulling a `Sutando.Skills` reference
+> in here would force a transitive dependency Phone does not need. Voice is the natural seam —
+> it already owns `IRealtimeTransportFactory` and the WS handler that mints sessions.
+
+The bridge ports the concept of upstream's `loadSkillManifestTools()` to the .NET surface:
+turn each registered `ISkill` into a `RealtimeToolDefinition` the model sees, plus a
+`RealtimeToolHandler` delegate that routes inbound tool calls back to `ISkill.ExecuteAsync`.
+
+- **`SkillVoiceTool`** (`src/Sutando.Voice/Skills/SkillVoiceTool.cs`) — single-skill adapter.
+  Tool name = `manifest.Id` (validated against Gemini's `[a-zA-Z0-9_-]{1,63}` rule, throws
+  `ArgumentException` otherwise). Default parameter schema is a permissive
+  `{"type":"object","additionalProperties":{"type":"string"}}` — mirrors what `ISkill` actually
+  accepts. Per-skill schema overrides are supported via the ctor's `parameterSchemaOverride`.
+  Arguments are coerced JSON → `IReadOnlyDictionary<string, string>`: strings flow through;
+  non-strings survive as their raw JSON text so structured skills can re-parse.
+
+- **`SkillRegistryVoiceBridge`** (same folder) — snapshot of a `SkillRegistry` into a name →
+  adapter map. Exposes `GetToolDefinitions()` (feed into `RealtimeSessionConfig.Tools`),
+  `TryGetHandler(name)` (dispatcher), and `RegisterWith(session)` (one-call wiring against a
+  `VoiceSession` before `ConnectAsync`).
+
+- **DI extension** — `SkillRegistryVoiceBridgeServiceCollectionExtensions.AddSkillRegistryVoiceBridge()`
+  builds a singleton bridge from the container's `SkillRegistry` + `WorkspaceDirectory`. An overload
+  accepts a pre-built bridge for callers that need a custom schema resolver or HTTP client.
+
+- **Host wiring** — `VoiceWebSocketHandler` takes an optional `SkillRegistryVoiceBridge?` ctor
+  parameter (defaulted `null`). When non-null and non-empty, the handler advertises the bridge's
+  tools on the session config and registers every handler against the session before
+  `ConnectAsync`. **No registration = no behavioural change** — both the cloud and `--local`
+  voice paths are identical to the pre-bridge slice when the integrator hasn't opted in.
+
+### Integrator wiring (CLI follow-up)
+
+The CLI's `sutando voice` verb is the natural seat. The integration commit there should:
+
+1. Build a `SkillRegistry` via the existing `SkillsHost.BuildRegistry(workspace)` helper.
+2. Construct a `SkillRegistryVoiceBridge(registry, workspace)`.
+3. Register both `SkillRegistry` and the bridge with the voice host's `IServiceCollection`
+   before calling `VoiceServer.Build(args).RunAsync()`. The DI extension method above is the
+   one-liner.
+4. Surface an opt-in flag (suggested: `--skills` / `--no-skills`) so operators can skip the
+   bridge when they want plain voice.
+
+### Follow-ups
+
+- **Schema slot on `SkillManifest`.** A first-class JSON-Schema field would let on-disk skills
+  declare typed parameters without a per-host resolver. Out of scope for this slice (Skills is
+  off-limits); the `Func<SkillManifest, JsonElement?>` resolver hook on the bridge is the
+  workaround in the meantime.
+- **Subagent dispatch.** `RealtimeToolDefinition.Execution` ships as `Inline` for every
+  skill-derived tool. Wiring `Background` to a real runner is the same follow-up referenced in
+  the deferred-work section above.
+
 ## Reconnect semantics in this slice
 
 `VoiceSession` is **not** auto-reconnecting. When a non-client-initiated

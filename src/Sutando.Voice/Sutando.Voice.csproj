@@ -27,6 +27,10 @@
          LocalPipelineRealtimeClient, which the host registers as the IRealtimeTransportFactory
          backend when local mode / Voice:UseLocal is set. -->
     <ProjectReference Include="..\Sutando.Voice.Local\Sutando.Voice.Local.csproj" />
+    <!-- Skill-tool bridge: SkillRegistry → RealtimeToolDefinition adapter + dispatcher. Optional
+         at runtime — when no SkillRegistryVoiceBridge is registered in DI, the voice session
+         behaves exactly as before. The adapter / bridge live under src/Sutando.Voice/Skills/. -->
+    <ProjectReference Include="..\Sutando.Skills\Sutando.Skills.csproj" />
     <!-- The in-process local-inference adapters the local flavour wires up from env-var model
          paths. They're transitively pulled into the build via Sutando.Voice.Local's pipeline
          dependencies for the abstractions, but the concrete adapters need explicit references. -->
