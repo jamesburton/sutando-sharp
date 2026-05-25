@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Sutando.Skills.Cloud.Common;
 using Sutando.Skills.Cloud.Google;
 using Sutando.Skills.Cloud.OpenAI;
 using Sutando.Skills.Cloud.Twitter;
@@ -78,5 +79,7 @@ public static class CloudSkillRegistration
         new Entry([OpenAiTextToSpeechSkill.ApiKeyEnvVar], () => new OpenAiTextToSpeechSkill()),
         new Entry([GeminiImageGenerationSkill.ApiKeyEnvVar], () => new GeminiImageGenerationSkill()),
         new Entry(XTwitterSkill.RequiredEnvVars, () => new XTwitterSkill()),
+        new Entry(GoogleOAuthHelper.RequiredEnvVars, () => new GmailSkill()),
+        new Entry(GoogleOAuthHelper.RequiredEnvVars, () => new CalendarSkill()),
     ];
 }
