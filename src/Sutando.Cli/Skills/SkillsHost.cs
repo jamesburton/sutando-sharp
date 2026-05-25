@@ -47,8 +47,23 @@ internal static class SkillsHost
 
         var registry = new SkillRegistry();
 
-        // 1. Disk discovery: <workspace>/skills/ and ~/.sutando/skills/
-        var discovered = SkillDiscovery.Default(workspace).Discover();
+        // 1. Disk discovery: <workspace>/skills/ and ~/.sutando/skills/. When SUTANDO_PRIVATE_DIR
+        //    is set, also scan <private-dir>/skills/ — mirrors upstream's loadSkillManifestTools()
+        //    which scans both <repo>/skills and $SUTANDO_PRIVATE_DIR/skills. All four upstream-
+        //    active manifest skills live in the private dir, so this is the primary use case.
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var additionalRoots = new List<string>();
+        if (env.TryGetValue("SUTANDO_PRIVATE_DIR", out var privateDir) && !string.IsNullOrWhiteSpace(privateDir))
+        {
+            additionalRoots.Add(Path.Combine(privateDir, "skills"));
+        }
+        var discovery = new SkillDiscovery(new SkillDiscoveryOptions
+        {
+            WorkspaceSkillsRoot = Path.Combine(workspace.Root.FullName, "skills"),
+            UserSkillsRoot = Path.Combine(home, ".sutando", "skills"),
+            AdditionalRoots = additionalRoots,
+        });
+        var discovered = discovery.Discover();
         registry.Register(discovered);
         var diskIds = discovered.Select(d => d.Manifest.Id).ToList();
 

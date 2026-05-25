@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Sutando.Voice.Skills;
 
 namespace Sutando.Voice;
 
@@ -25,8 +26,13 @@ public static class VoiceServer
     /// </list>
     /// </summary>
     /// <param name="args">CLI args. <c>--port &lt;n&gt;</c> overrides the bind port.</param>
+    /// <param name="skillBridge">
+    /// Optional pre-built <see cref="SkillRegistryVoiceBridge"/>. When supplied, registered as a
+    /// singleton so <see cref="VoiceWebSocketHandler"/> picks it up and advertises skill-derived
+    /// tools to the model. When null, the voice host behaves exactly as before (no skill tools).
+    /// </param>
     /// <returns>A fully-configured app, ready for <c>RunAsync</c>.</returns>
-    public static WebApplication Build(string[] args)
+    public static WebApplication Build(string[] args, SkillRegistryVoiceBridge? skillBridge = null)
     {
         ArgumentNullException.ThrowIfNull(args);
 
@@ -63,6 +69,11 @@ public static class VoiceServer
         else
         {
             builder.Services.AddSingleton<IRealtimeTransportFactory, GeminiLiveTransportFactory>();
+        }
+
+        if (skillBridge is not null)
+        {
+            builder.Services.AddSkillRegistryVoiceBridge(skillBridge);
         }
 
         builder.Services.AddSingleton<VoiceWebSocketHandler>();

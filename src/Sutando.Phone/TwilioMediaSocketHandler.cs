@@ -50,6 +50,7 @@ public sealed class TwilioMediaSocketHandler
     private readonly CallMetadataStore _metadataStore;
     private readonly IOptions<PhoneOptions> _options;
     private readonly ILogger<TwilioMediaSocketHandler> _logger;
+    private readonly PhoneSkillBridge? _skillBridge;
 
     /// <summary>Creates a new handler.</summary>
     /// <param name="transportFactory">Factory the handler hands to every <see cref="VoiceSession"/>.</param>
@@ -57,12 +58,21 @@ public sealed class TwilioMediaSocketHandler
     /// <param name="metadataStore">Persistence sink for per-call metadata.</param>
     /// <param name="options">Bound phone options (Gemini key, model, voice, tier policy).</param>
     /// <param name="logger">Logger.</param>
+    /// <param name="skillBridge">
+    /// Optional skill-tool bridge. When supplied (and non-empty), every call advertises the
+    /// bridge's <see cref="PhoneSkillBridge.Tools"/> on the realtime session config and invokes
+    /// <see cref="PhoneSkillBridge.RegisterWithSession"/> before <see cref="VoiceSession.ConnectAsync"/>.
+    /// Without a bridge the phone path behaves exactly as before — no skill tools advertised.
+    /// Matches the upstream <c>conversation-server.ts:587</c> behaviour of mirroring the voice
+    /// agent's inline tools into the phone session.
+    /// </param>
     public TwilioMediaSocketHandler(
         IPhoneTransportFactory transportFactory,
         CallTracker tracker,
         CallMetadataStore metadataStore,
         IOptions<PhoneOptions> options,
-        ILogger<TwilioMediaSocketHandler> logger)
+        ILogger<TwilioMediaSocketHandler> logger,
+        PhoneSkillBridge? skillBridge = null)
     {
         ArgumentNullException.ThrowIfNull(transportFactory);
         ArgumentNullException.ThrowIfNull(tracker);
@@ -75,6 +85,7 @@ public sealed class TwilioMediaSocketHandler
         _metadataStore = metadataStore;
         _options = options;
         _logger = logger;
+        _skillBridge = skillBridge;
     }
 
     /// <summary>
@@ -110,6 +121,16 @@ public sealed class TwilioMediaSocketHandler
             // tearing it down at the end of HandleAsync mirrors the original transport-per-
             // connection lifecycle (and keeps the in-process test fakes ergonomic).
             session = new VoiceSession(client: _transportFactory.Create(), ownsClient: true);
+
+            // Skill-tool wiring — only when a PhoneSkillBridge is in the DI container. Mirrors the
+            // voice-side flow (VoiceWebSocketHandler.HandleAsync); tools must be registered before
+            // ConnectAsync so the model sees them on the setup envelope.
+            var skillTools = _skillBridge?.Tools;
+            if (_skillBridge is not null && skillTools is { Count: > 0 })
+            {
+                _skillBridge.RegisterWithSession(session);
+            }
+
             // SystemInstruction + voice are bound once on the session — there's no per-tier
             // diff in this slice. Unverified tier still gets the full voice but its session is
             // forcibly torn down after PhoneOptions.UnverifiedSessionTimeoutSeconds.
@@ -117,7 +138,8 @@ public sealed class TwilioMediaSocketHandler
                 Model: opts.Model,
                 ApiKey: opts.ApiKey,
                 VoiceName: opts.VoiceName,
-                SystemInstruction: opts.SystemInstruction);
+                SystemInstruction: opts.SystemInstruction,
+                Tools: skillTools);
 
             // Outbound (Gemini → Twilio) pump — fired off EventReceived as in Sutando.Voice.
             handler = (_, evt) =>

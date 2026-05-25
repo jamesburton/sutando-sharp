@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Sutando.Api;
 using Sutando.Bridge;
 using Sutando.Browser;
@@ -10,9 +12,11 @@ using Sutando.Channels.Telegram;
 using Sutando.Cli.Skills;
 using Sutando.Dashboard;
 using Sutando.Phone;
+using Sutando.Proactive;
 using Sutando.Skills;
 using Sutando.Skills.Discovery;
 using Sutando.Voice;
+using Sutando.Voice.Skills;
 using Sutando.Workspace;
 
 namespace Sutando.Cli;
@@ -300,15 +304,56 @@ internal static class Commands
     public static async Task<int> VoiceAsync(string[] args)
     {
         var forwarded = args.Length > 1 ? args[1..] : [];
+
+        // --no-skills opts out of the SkillRegistry → voice-tool bridge. Default is on so cloud +
+        // notes skills are reachable from voice without explicit configuration. --skills is accepted
+        // for symmetry but the default already enables it.
+        var skillsEnabled = !forwarded.Contains("--no-skills");
+        var argsForVoiceServer = forwarded.Where(a => a is not "--skills" and not "--no-skills").ToArray();
+
+        SkillRegistryVoiceBridge? bridge = null;
+        if (skillsEnabled)
+        {
+            var ws = WorkspaceDirectory.Resolve();
+            var (registry, report) = SkillsHost.BuildRegistry(ws);
+            bridge = new SkillRegistryVoiceBridge(registry, ws);
+            Console.WriteLine($"sutando voice: skill bridge enabled — {bridge.Count} tools ({report.DiskIds.Count} disk + {report.CloudIds.Count} cloud + {report.NotesIds.Count} notes). Pass --no-skills to disable.");
+        }
+        else
+        {
+            Console.WriteLine("sutando voice: skill bridge disabled (--no-skills).");
+        }
+
         using var cts = NewSigIntCts();
-        return await VoiceCommand.RunAsync(forwarded, cts.Token).ConfigureAwait(false);
+        return await VoiceCommand.RunAsync(argsForVoiceServer, bridge, cts.Token).ConfigureAwait(false);
     }
 
     public static async Task<int> PhoneAsync(string[] args)
     {
         var forwarded = args.Length > 1 ? args[1..] : [];
+
+        // Same --skills/--no-skills semantics as `sutando voice` — default on, opt out with
+        // --no-skills. Mirrors upstream conversation-server.ts:587 (phone agent inherits the
+        // voice agent's inline-tool surface).
+        var skillsEnabled = !forwarded.Contains("--no-skills");
+        var argsForPhoneServer = forwarded.Where(a => a is not "--skills" and not "--no-skills").ToArray();
+
+        PhoneSkillBridge? bridge = null;
+        if (skillsEnabled)
+        {
+            var ws = WorkspaceDirectory.Resolve();
+            var (registry, report) = SkillsHost.BuildRegistry(ws);
+            var voiceBridge = new SkillRegistryVoiceBridge(registry, ws);
+            bridge = new PhoneSkillBridge(voiceBridge.GetToolDefinitions(), voiceBridge.RegisterWith);
+            Console.WriteLine($"sutando phone: skill bridge enabled — {voiceBridge.Count} tools ({report.DiskIds.Count} disk + {report.CloudIds.Count} cloud + {report.NotesIds.Count} notes). Pass --no-skills to disable.");
+        }
+        else
+        {
+            Console.WriteLine("sutando phone: skill bridge disabled (--no-skills).");
+        }
+
         using var cts = NewSigIntCts();
-        return await PhoneCommand.RunAsync(forwarded, cts.Token).ConfigureAwait(false);
+        return await PhoneCommand.RunAsync(argsForPhoneServer, bridge, cts.Token).ConfigureAwait(false);
     }
 
     public static async Task<int> DiscordAsync(string[] args)
@@ -332,6 +377,92 @@ internal static class Commands
         using var cts = NewSigIntCts();
         Console.WriteLine($"sutando discord: starting (owner={options.OwnerUserId}, team-roles={options.TeamRoleIds.Count}, channels={options.AllowedChannelIds.Count}). Ctrl+C to stop.");
         await channel.RunAsync(cts.Token).ConfigureAwait(false);
+        return 0;
+    }
+
+    public static async Task<int> ProactiveAsync(string[] args)
+    {
+        var sub = args.Length > 1 ? args[1] : "run";
+
+        if (sub is "run" or "start")
+        {
+            return await ProactiveRunAsync().ConfigureAwait(false);
+        }
+
+        Console.Error.WriteLine("usage: sutando proactive [run]");
+        Console.Error.WriteLine("       Starts the proactive background service. The default IProactivePass is");
+        Console.Error.WriteLine("       NoopProactivePass; host implementations register their own via DI.");
+        return 64;
+    }
+
+    private static async Task<int> ProactiveRunAsync()
+    {
+        var ws = WorkspaceDirectory.Resolve();
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.AddSingleton(ws);
+        builder.Services.AddSutandoProactive();
+        // IProactivePass defaults to NoopProactivePass via AddSutandoProactive; the host owns
+        // overrides. This verb intentionally keeps the body trivial so the operator can verify
+        // the scheduling chassis without wiring an executor first.
+
+        using var host = builder.Build();
+        using var cts = NewSigIntCts();
+
+        var cronCount = new CronConfigLoader().Load(ws).Count;
+        Console.WriteLine($"sutando proactive: starting (workspace={ws.Root.FullName}, crons={cronCount}). Default pass is NoopProactivePass — register IProactivePass in DI to customise. Ctrl+C to stop.");
+
+        try
+        {
+            await host.RunAsync(cts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // expected on Ctrl+C
+        }
+        return 0;
+    }
+
+    public static int Cron(string[] args)
+    {
+        var sub = args.Length > 1 ? args[1] : "list";
+
+        if (sub is "list" or "ls")
+        {
+            return CronList();
+        }
+
+        Console.Error.WriteLine("usage: sutando cron list");
+        Console.Error.WriteLine("       Prints entries from <workspace>/crons.json (or crons.example.json fallback).");
+        Console.Error.WriteLine("       To add/remove entries, edit <workspace>/crons.json directly — the file");
+        Console.Error.WriteLine("       shape matches upstream's `skills/schedule-crons/crons.json`.");
+        return 64;
+    }
+
+    private static int CronList()
+    {
+        var ws = WorkspaceDirectory.Resolve();
+        var entries = new CronConfigLoader().Load(ws);
+
+        if (entries.Count == 0)
+        {
+            Console.WriteLine($"(no cron entries — looked at {Path.Combine(ws.Root.FullName, CronConfigLoader.PrimaryFileName)} and {Path.Combine(ws.Root.FullName, CronConfigLoader.FallbackFileName)})");
+            return 0;
+        }
+
+        var nameWidth = Math.Max(4, entries.Max(e => (e.Name ?? string.Empty).Length));
+        var cronWidth = Math.Max(8, entries.Max(e => (e.Cron ?? string.Empty).Length));
+
+        Console.WriteLine($"{"NAME".PadRight(nameWidth)}  {"CRON".PadRight(cronWidth)}  TARGET");
+        Console.WriteLine(new string('-', nameWidth + cronWidth + 8 + 24));
+
+        foreach (var e in entries.OrderBy(e => e.Name, StringComparer.Ordinal))
+        {
+            var target = !string.IsNullOrEmpty(e.PromptSkill)
+                ? $"skill:{e.PromptSkill}"
+                : Truncate(e.Prompt ?? string.Empty, 60);
+            Console.WriteLine($"{(e.Name ?? string.Empty).PadRight(nameWidth)}  {(e.Cron ?? string.Empty).PadRight(cronWidth)}  {target}");
+        }
+
         return 0;
     }
 

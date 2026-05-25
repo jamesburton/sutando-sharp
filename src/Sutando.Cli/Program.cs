@@ -41,6 +41,8 @@ try
         "api" => await Commands.ApiAsync(args).ConfigureAwait(false),
         "dashboard" => await Commands.DashboardAsync(args).ConfigureAwait(false),
         "skills" => await Commands.SkillsAsync(args).ConfigureAwait(false),
+        "proactive" => await Commands.ProactiveAsync(args).ConfigureAwait(false),
+        "cron" => Commands.Cron(args),
         _ => Unknown(args[0]),
     };
 }
@@ -89,6 +91,11 @@ static void PrintHelp(string version)
     Console.WriteLine("  skills run <id> [--arg k=v ...]");
     Console.WriteLine("                            Invoke a skill by id with optional key=value arguments. Exits 0 on");
     Console.WriteLine("                            success (body + artifact paths to stdout) or 1 on failure (error to stderr).");
+    Console.WriteLine("  proactive [run]           Start the proactive background service (cron scheduler + per-pass dispatch).");
+    Console.WriteLine("                            Default pass is NoopProactivePass — host implementations register");
+    Console.WriteLine("                            their own IProactivePass via DI.");
+    Console.WriteLine("  cron list                 Print entries from <workspace>/crons.json (mirrors upstream's");
+    Console.WriteLine("                            skills/schedule-crons/crons.json shape).");
     Console.WriteLine("  help                      Show this message.");
     Console.WriteLine();
     Console.WriteLine("Workspace: $SUTANDO_WORKSPACE overrides the default '~/.sutando/workspace/'.");

@@ -18,7 +18,7 @@ public partial class Program
     /// <summary>Hidden constructor; this type is referenced only via its static <see cref="Main"/>.</summary>
     protected Program() { }
 
-    /// <summary>Process entry point; delegates to <see cref="PhoneCommand.RunAsync"/>.</summary>
+    /// <summary>Process entry point; delegates to <see cref="PhoneCommand.RunAsync(string[], CancellationToken)"/>.</summary>
     /// <param name="args">Process command-line args.</param>
     /// <returns>Process exit task.</returns>
     public static async Task Main(string[] args)

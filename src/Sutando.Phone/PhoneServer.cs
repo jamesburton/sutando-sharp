@@ -35,8 +35,13 @@ public static class PhoneServer
 
     /// <summary>Build a configured <see cref="WebApplication"/>.</summary>
     /// <param name="args">CLI args. <c>--port &lt;n&gt;</c> overrides the bind port.</param>
+    /// <param name="skillBridge">
+    /// Optional pre-built <see cref="PhoneSkillBridge"/>. When supplied, registered as a singleton
+    /// so <see cref="TwilioMediaSocketHandler"/> picks it up and advertises skill-derived tools on
+    /// every call. When null, the phone host behaves exactly as before (no skill tools).
+    /// </param>
     /// <returns>The fully-wired app, ready for <c>RunAsync</c>.</returns>
-    public static WebApplication Build(string[] args)
+    public static WebApplication Build(string[] args, PhoneSkillBridge? skillBridge = null)
     {
         ArgumentNullException.ThrowIfNull(args);
 
@@ -63,6 +68,12 @@ public static class PhoneServer
         builder.Services.AddSingleton<CallTracker>();
         builder.Services.AddSingleton<CallMetadataStore>();
         builder.Services.AddSingleton<IPhoneTransportFactory, GeminiLivePhoneTransportFactory>();
+
+        if (skillBridge is not null)
+        {
+            builder.Services.AddSingleton(skillBridge);
+        }
+
         builder.Services.AddSingleton<TwilioMediaSocketHandler>();
 
         builder.Services.AddSingleton<WorkspaceDirectory>(sp =>
