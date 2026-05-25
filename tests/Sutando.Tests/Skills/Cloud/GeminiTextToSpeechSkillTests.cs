@@ -229,6 +229,18 @@ public sealed class GeminiTextToSpeechSkillTests : IDisposable
             new Dictionary<string, string> { ["text"] = "Hello from the sutando port." },
             CancellationToken.None);
 
+        // Environmental failures (rate limit, transient 5xx, network) are out of this test's
+        // scope — they describe the operator's account, not the skill code. Skip on those so a
+        // developer running the suite locally with an exhausted free tier doesn't see a red
+        // failure that isn't theirs. Hard failures (4xx other than 429, malformed responses)
+        // still fall through to the assertion below and surface as red.
+        if (!result.Success && (result.Error.Contains("HTTP 429", StringComparison.Ordinal)
+            || result.Error.Contains("HTTP 503", StringComparison.Ordinal)
+            || result.Error.Contains("HTTP 500", StringComparison.Ordinal)))
+        {
+            Skip.If(true, $"Gemini API rate-limited / unavailable ({result.Error}); skipping");
+        }
+
         Assert.True(result.Success, result.Error);
         var path = Assert.Single(result.Artifacts);
         var size = new FileInfo(path).Length;

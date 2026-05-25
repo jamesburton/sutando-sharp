@@ -23,16 +23,20 @@ public sealed class CloudSkillRegistrationTests
     }
 
     [Fact]
-    public void Register_WithGeminiApiKey_RegistersGeminiTtsOnly()
+    public void Register_WithGeminiApiKey_RegistersEveryGeminiSkill()
     {
+        // GEMINI_API_KEY unlocks every Gemini-family integration in one go — currently
+        // gemini-tts and image-generation. New entries that key off the same env var should
+        // appear here automatically; this test just asserts the set is non-empty and contains
+        // both currently-shipped ids.
         var registry = new SkillRegistry();
         var registered = CloudSkillRegistration.Register(registry,
             new Dictionary<string, string> { [GeminiTextToSpeechSkill.ApiKeyEnvVar] = "fake-key" });
 
-        Assert.Equal(["gemini-tts"], registered);
-        var skill = registry.TryGet("gemini-tts");
-        Assert.NotNull(skill);
-        Assert.IsType<GeminiTextToSpeechSkill>(skill);
+        Assert.Contains("gemini-tts", registered);
+        Assert.Contains("image-generation", registered);
+        Assert.IsType<GeminiTextToSpeechSkill>(registry.TryGet("gemini-tts"));
+        Assert.IsType<GeminiImageGenerationSkill>(registry.TryGet("image-generation"));
     }
 
     [Fact]
@@ -48,7 +52,7 @@ public sealed class CloudSkillRegistrationTests
     }
 
     [Fact]
-    public void Register_WithBothApiKeys_RegistersBothSkills()
+    public void Register_WithBothApiKeys_RegistersAllAvailableSkills()
     {
         var registry = new SkillRegistry();
         var registered = CloudSkillRegistration.Register(registry, new Dictionary<string, string>
@@ -57,9 +61,11 @@ public sealed class CloudSkillRegistrationTests
             [OpenAiTextToSpeechSkill.ApiKeyEnvVar] = "sk-fake",
         });
 
+        // Both provider keys present → every currently-shipped Cloud skill registers. New
+        // entries gated on these env vars will lift the count here automatically.
         Assert.Contains("gemini-tts", registered);
         Assert.Contains("openai-tts", registered);
-        Assert.Equal(2, registered.Count);
+        Assert.Contains("image-generation", registered);
     }
 
     [Fact]

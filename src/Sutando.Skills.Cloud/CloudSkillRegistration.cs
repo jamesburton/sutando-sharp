@@ -75,5 +75,6 @@ public static class CloudSkillRegistration
     [
         new Entry([GeminiTextToSpeechSkill.ApiKeyEnvVar], () => new GeminiTextToSpeechSkill()),
         new Entry([OpenAiTextToSpeechSkill.ApiKeyEnvVar], () => new OpenAiTextToSpeechSkill()),
+        new Entry([GeminiImageGenerationSkill.ApiKeyEnvVar], () => new GeminiImageGenerationSkill()),
     ];
 }
