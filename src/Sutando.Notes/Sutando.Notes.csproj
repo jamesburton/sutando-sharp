@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Sutando.Notes</RootNamespace>
+    <PackageId>Sutando.Notes</PackageId>
+    <Title>Sutando — managed notes / second-brain over the workspace</Title>
+    <Description>Managed second-brain layer over the workspace's notes/ directory. Provides a Note model, frontmatter parser (YAML), filesystem store with atomic writes, a NotesService for search/create/update/tag operations, and an ISkill manifest exposing notes.search / notes.read / notes.write / notes.tag to the agent. Implements the "Notes / second brain" row of docs/upstream-feature-gap.md.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sutando.Skills\Sutando.Skills.csproj" />
+    <ProjectReference Include="..\Sutando.Workspace\Sutando.Workspace.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+    <PackageReference Include="YamlDotNet" Version="16.3.0" />
+  </ItemGroup>
+
+</Project>
