@@ -38,6 +38,8 @@
          use in tests/AppHost/ to inspect the AppHost's resource graph without booting
          Docker. Version-pinned alongside Aspire.AppHost.Sdk in Sutando.AppHost.csproj. -->
     <PackageReference Include="Aspire.Hosting.Testing" Version="13.3.3" />
+    <!-- FakeTimeProvider — drives Sutando.Proactive's TimeProvider-based scheduler under test. -->
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="9.0.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -64,6 +66,11 @@
     <ProjectReference Include="..\..\src\Sutando.LocalInference.Silero\Sutando.LocalInference.Silero.csproj" />
     <ProjectReference Include="..\..\src\Sutando.LocalInference.OpenAI\Sutando.LocalInference.OpenAI.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Pipeline\Sutando.Pipeline.csproj" />
+    <!-- Sutando.Proactive is the new cron + proactive-loop scheduling library (Agent A). The
+         integrator adds it to Sutando.sln; until then it is pulled into the build transitively
+         via this ProjectReference, matching the pattern documented in
+         src/Sutando.Pipeline/INTEGRATION-NOTES.md. -->
+    <ProjectReference Include="..\..\src\Sutando.Proactive\Sutando.Proactive.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Api\Sutando.Api.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Dashboard\Sutando.Dashboard.csproj" />
     <ProjectReference Include="..\..\src\Sutando.Voice\Sutando.Voice.csproj" />
