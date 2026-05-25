@@ -2,6 +2,7 @@ using Sutando.Skills;
 using Sutando.Skills.Cloud;
 using Sutando.Skills.Cloud.Google;
 using Sutando.Skills.Cloud.OpenAI;
+using Sutando.Skills.Cloud.Twitter;
 
 namespace Sutando.Tests.Skills.Cloud;
 
@@ -66,6 +67,40 @@ public sealed class CloudSkillRegistrationTests
         Assert.Contains("gemini-tts", registered);
         Assert.Contains("openai-tts", registered);
         Assert.Contains("image-generation", registered);
+    }
+
+    [Fact]
+    public void Register_WithOnlyPartialTwitterCreds_DoesNotRegisterXTwitter()
+    {
+        // Three of the four OAuth1 env vars set, fourth missing — the skill should not appear.
+        // Verifies the multi-env-var gating actually requires every entry, not just one.
+        var registry = new SkillRegistry();
+        var registered = CloudSkillRegistration.Register(registry, new Dictionary<string, string>
+        {
+            [XTwitterSkill.ApiKeyEnvVar] = "ck",
+            [XTwitterSkill.ApiSecretEnvVar] = "cs",
+            [XTwitterSkill.AccessTokenEnvVar] = "at",
+            // AccessSecretEnvVar deliberately omitted
+        });
+
+        Assert.DoesNotContain("x-twitter", registered);
+        Assert.Null(registry.TryGet("x-twitter"));
+    }
+
+    [Fact]
+    public void Register_WithAllTwitterCreds_RegistersXTwitter()
+    {
+        var registry = new SkillRegistry();
+        var registered = CloudSkillRegistration.Register(registry, new Dictionary<string, string>
+        {
+            [XTwitterSkill.ApiKeyEnvVar] = "ck",
+            [XTwitterSkill.ApiSecretEnvVar] = "cs",
+            [XTwitterSkill.AccessTokenEnvVar] = "at",
+            [XTwitterSkill.AccessSecretEnvVar] = "ats",
+        });
+
+        Assert.Contains("x-twitter", registered);
+        Assert.IsType<XTwitterSkill>(registry.TryGet("x-twitter"));
     }
 
     [Fact]
