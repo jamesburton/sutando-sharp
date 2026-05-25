@@ -16,7 +16,7 @@ Upstream is macOS-only TypeScript + Python + Swift. This port reimplements in C#
 
 | Project | Role |
 |---|---|
-| `Sutando.Cli` | The `dnx`-runnable tool — 14 subcommands. See [`docs/cli.md`](docs/cli.md). |
+| `Sutando.Cli` | The `dnx`-runnable tool — 16 subcommands. See [`docs/cli.md`](docs/cli.md). |
 | `Sutando.Workspace` | Canonical workspace path resolution + heartbeat + core-status + owner-activity |
 | `Sutando.Bridge` | Locked task/result contract, marker grammar, archive, file-watcher |
 | `Sutando.Core` | `IAgentExecutor` abstraction + Claude CLI executor + Anthropic HTTP executor + `TaskRunner` |
@@ -30,6 +30,7 @@ Upstream is macOS-only TypeScript + Python + Swift. This port reimplements in C#
 | `Sutando.Channels.Discord` | Discord bot bridge (`DSharpPlus` 4.5.2) with byte-for-byte upstream tier sandboxing |
 | `Sutando.Browser` | Playwright wrapper matching upstream's action grammar |
 | `Sutando.Skills` | Skill manifest + discovery + managed/script runtimes + registry |
+| `Sutando.Skills.Cloud` | Optional cloud-API skills (Gemini TTS, OpenAI TTS, image gen, X/Twitter tweet, gmail, calendar, viral video) — gated on env vars |
 | `Sutando.Platform.Abstractions` | Cross-platform contracts: screen capture, clipboard, notifications, hotkeys |
 | `Sutando.Platform.Windows` | Windows-specific implementations (GDI capture, toast, Win32 clipboard, RegisterHotKey) |
 | `Sutando.Tests` | xunit, multi-targeted on Windows for platform-specific tests |

@@ -60,6 +60,26 @@ Port overrides: `--port <n>` flag, `SUTANDO_VOICE_PORT` / `SUTANDO_API_PORT` / `
 
 Local-inference voice (`sutando voice --local`): set the `--local` flag (or `SUTANDO_VOICE_LOCAL=1`) to run the voice loop entirely on-host. The four model files are resolved from env vars — `SUTANDO_WHISPER_MODEL` (Whisper GGML), `SUTANDO_LLAMA_MODEL` (GGUF chat model), `SUTANDO_KOKORO_MODEL` (Kokoro ONNX), and optionally `SUTANDO_SILERO_MODEL` (Silero VAD ONNX; auto-downloaded when unset). When a model is missing the WebSocket handshake still completes and the browser receives a clear `error` envelope instead of the server crashing.
 
+## Skills
+
+The skills subsystem exposes the registered skill ecosystem. Cloud skills are gated on environment
+variables (see the `Configuration` section of the README); filesystem skills are loaded from
+`<workspace>/skills/<id>/skill.json` and `~/.sutando/skills/<id>/skill.json`. The two subcommands
+below make cloud skills usable from a terminal and serve as smoke-test entry points.
+
+| Verb | What |
+|---|---|
+| `sutando skills list` | Print every registered skill as a table of `ID`, `RUNTIME`, `TRIGGERS`, and `DESCRIPTION`. Disk-discovered and assembly-registered skills appear together. If no skills are registered (no env vars set, no skill dirs), prints a brief hint. |
+| `sutando skills run <id> [--arg key=value ...]` | Resolve skill `<id>` from the registry and invoke `ExecuteAsync` with the supplied arguments. On success: prints the result body to stdout; if the skill produced artifact file paths they follow, one per line; exits 0. On failure: writes the error to stderr and exits 1. `--arg` may be repeated; values may contain `=` (split on the first `=` only). Exit 64 on usage errors. |
+
+**Environment setup for cloud skills (example):**
+
+```sh
+export GEMINI_API_KEY=your-key
+sutando skills list          # should show gemini-tts and image-generation
+sutando skills run gemini-tts --arg text="Hello, world"
+```
+
 ## Browser
 
 | Verb | What |

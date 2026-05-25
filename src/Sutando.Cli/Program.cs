@@ -40,6 +40,7 @@ try
         "phone" => await Commands.PhoneAsync(args).ConfigureAwait(false),
         "api" => await Commands.ApiAsync(args).ConfigureAwait(false),
         "dashboard" => await Commands.DashboardAsync(args).ConfigureAwait(false),
+        "skills" => await Commands.SkillsAsync(args).ConfigureAwait(false),
         _ => Unknown(args[0]),
     };
 }
@@ -84,6 +85,10 @@ static void PrintHelp(string version)
     Console.WriteLine("  dashboard                 Run the read-only status dashboard on :7844 (SignalR live updates).");
     Console.WriteLine("  status [--watch]          Show the current core-status.json signal.");
     Console.WriteLine("  heartbeat [--start]       Write a single heartbeat (or run the loop until Ctrl+C).");
+    Console.WriteLine("  skills list               List all registered skills (id, runtime, triggers, description).");
+    Console.WriteLine("  skills run <id> [--arg k=v ...]");
+    Console.WriteLine("                            Invoke a skill by id with optional key=value arguments. Exits 0 on");
+    Console.WriteLine("                            success (body + artifact paths to stdout) or 1 on failure (error to stderr).");
     Console.WriteLine("  help                      Show this message.");
     Console.WriteLine();
     Console.WriteLine("Workspace: $SUTANDO_WORKSPACE overrides the default '~/.sutando/workspace/'.");
