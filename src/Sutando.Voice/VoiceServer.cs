@@ -47,6 +47,12 @@ public static class VoiceServer
             o.TimestampFormat = "HH:mm:ss ";
         });
 
+        // Surface the GenAI Live SDK's internal connection logs (LogConnectionClosedWithStatus etc).
+        // These carry the actual close reason when Gemini rejects the setup envelope — without them,
+        // a refused session looks like a silent timeout from our side. Information is sufficient;
+        // Debug would also pull message-by-message frame logs which are noisy.
+        builder.Logging.AddFilter("GenerativeAI", LogLevel.Information);
+
         builder.Services
             .AddOptions<VoiceOptions>()
             .Bind(builder.Configuration.GetSection(VoiceOptions.SectionName))

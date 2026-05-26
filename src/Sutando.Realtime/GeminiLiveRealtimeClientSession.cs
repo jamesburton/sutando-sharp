@@ -504,6 +504,13 @@ public sealed class GeminiLiveRealtimeClientSession : IRealtimeClientSession
 
     private void OnSdkDisconnected(object? sender, EventArgs e)
     {
+        // Log at Warning so an unexpected pre-setup-complete close is visible without bumping
+        // the GenerativeAI namespace's log filter. EventArgs carries no close-reason payload from
+        // the GenAI library; the actual status/code is logged by the library itself at Information
+        // level under its own category.
+        _logger.LogWarning(
+            "Gemini Live transport disconnected ({Initiator}). See preceding GenerativeAI.Live log entries (LogConnectionClosedWithStatus / LogConnectionClosedWithError) for close status — set logging level to Information for `GenerativeAI` namespace if they are missing.",
+            _closeInitiator);
         TryPublish(new RealtimeServerMessage
         {
             Type = SutandoRealtimeMessageTypes.SessionClosed,
@@ -514,9 +521,11 @@ public sealed class GeminiLiveRealtimeClientSession : IRealtimeClientSession
 
     private void OnSdkError(object? sender, System.IO.ErrorEventArgs e)
     {
+        var ex = e.GetException();
+        _logger.LogError(ex, "Gemini Live transport error: {Message}", ex?.Message ?? "(no message)");
         TryPublish(new ErrorRealtimeServerMessage
         {
-            Error = new ErrorContent(e.GetException()?.Message ?? "Unknown transport error."),
+            Error = new ErrorContent(ex?.Message ?? "Unknown transport error."),
         });
     }
 }
