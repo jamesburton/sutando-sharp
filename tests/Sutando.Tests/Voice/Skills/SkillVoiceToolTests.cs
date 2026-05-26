@@ -49,8 +49,11 @@ public sealed class SkillVoiceToolTests
     }
 
     [Fact]
-    public void Default_schema_is_permissive_object_with_string_additional_properties()
+    public void Default_schema_is_gemini_safe_object_with_empty_properties()
     {
+        // Gemini Live's FunctionDeclaration.parameters uses an OpenAPI subset that doesn't accept
+        // `additionalProperties`. The default must be an empty `properties: {}` object so the
+        // setup envelope is accepted; per-skill schemas can override via the bridge resolver.
         var skill = new FakeSkill(new SkillManifest
         {
             Id = "fake-skill",
@@ -64,8 +67,11 @@ public sealed class SkillVoiceToolTests
 
         Assert.Equal("object", schema.GetProperty("type").GetString());
         Assert.Equal("Desc", schema.GetProperty("description").GetString());
-        var additional = schema.GetProperty("additionalProperties");
-        Assert.Equal("string", additional.GetProperty("type").GetString());
+        Assert.True(schema.TryGetProperty("properties", out var properties));
+        Assert.Equal(JsonValueKind.Object, properties.ValueKind);
+        Assert.Empty(properties.EnumerateObject());
+        // Critically: NO additionalProperties — Gemini Live rejects setups that include it.
+        Assert.False(schema.TryGetProperty("additionalProperties", out _));
     }
 
     [Fact]

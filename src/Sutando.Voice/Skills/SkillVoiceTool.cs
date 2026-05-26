@@ -212,10 +212,20 @@ public sealed class SkillVoiceTool
     }
 
     /// <summary>
-    /// Permissive default schema — mirrors what <see cref="ISkill.ExecuteAsync"/> actually accepts
-    /// (a free-form string→string map). The description text is the skill's own description so the
-    /// model has something useful to read during function-selection.
+    /// Gemini-Live-safe default schema. <see cref="ISkill.ExecuteAsync"/> takes a free-form
+    /// string→string map, but Gemini Live's <c>FunctionDeclaration.parameters</c> uses a strict
+    /// OpenAPI subset that does not accept <c>additionalProperties</c> — including it causes the
+    /// setup envelope to be rejected and the realtime transport to close before the session
+    /// reaches <c>Connected</c>, surfacing as "WebSocket client is not connected." on the first
+    /// inbound frame.
     /// </summary>
+    /// <remarks>
+    /// Empty <c>properties</c> means the model is told "this tool takes an object with no declared
+    /// parameters" — it can still pass an arguments object inferred from the description; the
+    /// adapter's argument coercion will pick up any keys it finds. Per-skill schemas (via the
+    /// bridge's <c>schemaResolver</c> or the ctor's <c>parameterSchemaOverride</c>) are the path
+    /// to a more precise contract.
+    /// </remarks>
     /// <param name="description">The skill's description, surfaced into the schema's description.</param>
     private static JsonElement BuildDefaultSchema(string description)
     {
@@ -224,7 +234,7 @@ public sealed class SkillVoiceTool
         {
             type = "object",
             description = safe,
-            additionalProperties = new { type = "string" },
+            properties = new { },
         });
         return JsonDocument.Parse(json).RootElement.Clone();
     }
