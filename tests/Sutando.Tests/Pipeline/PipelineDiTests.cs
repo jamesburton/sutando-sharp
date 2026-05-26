@@ -56,7 +56,7 @@ public sealed class PipelineDiTests
 
     private sealed class NoOpSource : IPipelineStage<Unit, int>
     {
-        public async IAsyncEnumerable<int> ProcessAsync(IAsyncEnumerable<Unit> source, CancellationToken ct)
+        public async IAsyncEnumerable<int> ProcessAsync(IAsyncEnumerable<Unit> source, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
         {
             await Task.Yield();
             yield break;
@@ -65,7 +65,7 @@ public sealed class PipelineDiTests
 
     private sealed class NoOpSink : IPipelineStage<int, Unit>
     {
-        public async IAsyncEnumerable<Unit> ProcessAsync(IAsyncEnumerable<int> source, CancellationToken ct)
+        public async IAsyncEnumerable<Unit> ProcessAsync(IAsyncEnumerable<int> source, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
         {
             await foreach (var _ in source.WithCancellation(ct)) { }
             yield break;

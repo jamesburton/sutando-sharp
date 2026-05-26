@@ -234,11 +234,12 @@ public sealed class GeminiTextToSpeechSkillTests : IDisposable
         // developer running the suite locally with an exhausted free tier doesn't see a red
         // failure that isn't theirs. Hard failures (4xx other than 429, malformed responses)
         // still fall through to the assertion below and surface as red.
-        if (!result.Success && (result.Error.Contains("HTTP 429", StringComparison.Ordinal)
-            || result.Error.Contains("HTTP 503", StringComparison.Ordinal)
-            || result.Error.Contains("HTTP 500", StringComparison.Ordinal)))
+        var errorText = result.Error ?? string.Empty;
+        if (!result.Success && (errorText.Contains("HTTP 429", StringComparison.Ordinal)
+            || errorText.Contains("HTTP 503", StringComparison.Ordinal)
+            || errorText.Contains("HTTP 500", StringComparison.Ordinal)))
         {
-            Skip.If(true, $"Gemini API rate-limited / unavailable ({result.Error}); skipping");
+            Skip.If(true, $"Gemini API rate-limited / unavailable ({errorText}); skipping");
         }
 
         Assert.True(result.Success, result.Error);
