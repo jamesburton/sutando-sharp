@@ -87,6 +87,53 @@ public sealed class VoiceServerTests
     }
 
     [Fact]
+    public async Task Browser_audio_sent_before_setup_complete_is_held_until_setup_complete_then_dispatched()
+    {
+        // Regression test for the real-browser race that this project shipped with for weeks:
+        // VoiceSession.ConnectAsync returns BEFORE Gemini Live's setup-complete arrives, but the
+        // GenAI SDK's underlying WebSocket isn't actually open yet. If VoiceWebSocketHandler started
+        // PumpInboundAsync immediately, the first browser frame would race the still-handshaking
+        // transport and the SDK would throw "The WebSocket client is not connected." — surfaced
+        // back to the browser as an error envelope.
+        //
+        // The fix is in VoiceWebSocketHandler.HandleAsync: await session.StateChanged to reach
+        // Listening (= setup-complete arrived) BEFORE forwarding any client message.
+        await using var host = new VoiceTestHost();
+        using var cts = new CancellationTokenSource(ShortDeadline);
+
+        var ws = await ConnectAsync(host, cts.Token);
+        var fake = await host.Factory.WaitForCreateAsync(TimeSpan.FromSeconds(5));
+
+        // Send an audio frame BEFORE emitting setup-complete. With the fix in place, the WS receive
+        // buffer holds the frame; PumpInboundAsync hasn't started yet so SendAsync to the transport
+        // isn't called.
+        var pcm = new byte[] { 0xAA, 0xBB, 0xCC, 0xDD };
+        var envelope = JsonSerializer.SerializeToUtf8Bytes(new { type = "audio", data = Convert.ToBase64String(pcm) });
+        await ws.SendAsync(envelope, WebSocketMessageType.Text, endOfMessage: true, cts.Token);
+
+        // Give the server a moment to (incorrectly, pre-fix) dispatch the frame. With the fix the
+        // server is parked waiting for Listening.
+        await Task.Delay(200, cts.Token);
+        Assert.Empty(fake.SentInputs);
+
+        // Now flip the session to Listening and verify the buffered frame flows through.
+        fake.Emit(new RealtimeSetupComplete());
+        _ = await ReceiveTextAsync(ws, cts.Token);
+
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(2);
+        while (DateTime.UtcNow < deadline && fake.SentInputs.Count == 0)
+        {
+            await Task.Delay(20, cts.Token);
+        }
+
+        var sent = Assert.Single(fake.SentInputs);
+        var audio = Assert.IsType<RealtimeInput.RealtimeAudioInput>(sent);
+        Assert.Equal(pcm, audio.Pcm.ToArray());
+
+        await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "test done", cts.Token);
+    }
+
+    [Fact]
     public async Task Browser_audio_frame_is_forwarded_to_transport_as_pcm()
     {
         await using var host = new VoiceTestHost();
@@ -181,6 +228,12 @@ public sealed class VoiceServerTests
             await Task.Delay(20, cts.Token);
         }
         Assert.True(count >= 1, $"expected sessions >= 1, got {count}");
+
+        // Drive setup_complete so the handler exits its wait-for-Listening gate and PumpInboundAsync
+        // is alive to acknowledge the close handshake. Without this, ws.CloseAsync would hang until
+        // the test's cts expires.
+        var fake = await host.Factory.WaitForCreateAsync(TimeSpan.FromSeconds(2));
+        fake.Emit(new RealtimeSetupComplete());
 
         await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "test done", cts.Token);
     }

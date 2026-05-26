@@ -52,6 +52,12 @@ public sealed class VoiceServerSkillBridgeTests
         var advertised = fakeSession.LastConfig?.EffectiveTools ?? Array.Empty<RealtimeToolDefinition>();
         Assert.Contains(advertised, d => d.Name == "voice-test-skill");
 
+        // Drive setup_complete so VoiceWebSocketHandler exits its wait-for-Listening gate. The
+        // tool-call dispatch path itself doesn't go through PumpInboundAsync (it flows via
+        // EventReceived → bridge handler), but emitting setup_complete here lets the close
+        // handshake at the end of the test be acknowledged cleanly.
+        fakeSession.Emit(new RealtimeSetupComplete());
+
         // 2) Push a tool-call event back through the session and assert the skill ran AND the
         //    response made it back onto the wire — the "dispatch" half of the deliverable.
         var args = JsonDocument.Parse("""{"name":"world"}""").RootElement;
@@ -90,6 +96,10 @@ public sealed class VoiceServerSkillBridgeTests
 
         var advertised = fakeSession.LastConfig?.EffectiveTools ?? Array.Empty<RealtimeToolDefinition>();
         Assert.Empty(advertised);
+
+        // Drive setup_complete so the handler exits its wait-for-Listening gate and the close
+        // handshake at the end of the test is acknowledged cleanly.
+        fakeSession.Emit(new RealtimeSetupComplete());
 
         await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "test done", cts.Token);
     }

@@ -105,6 +105,7 @@ public sealed class TwilioMediaSocketHandler
         CallState? state = null;
         VoiceSession? session = null;
         EventHandler<RealtimeServerEvent>? handler = null;
+        EventHandler<VoiceSessionStateChange>? stateHandler = null;
         var startedAt = DateTimeOffset.UtcNow;
 
         try
@@ -154,9 +155,35 @@ public sealed class TwilioMediaSocketHandler
             };
             session.EventReceived += handler;
 
+            // VoiceSession.ConnectAsync returns BEFORE Gemini Live's setup-complete arrives — its
+            // contract requires the caller to wait for Listening (which fires on
+            // RealtimeSetupComplete) before sending. Without this wait, the first inbound Twilio
+            // media envelope races the not-yet-complete WS handshake and surfaces as
+            // "The WebSocket client is not connected." from the GenAI SDK. Same root cause as
+            // the parallel fix in Sutando.Voice.VoiceWebSocketHandler.HandleAsync.
+            var setupComplete = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            stateHandler = (_, change) =>
+            {
+                if (change.Current == VoiceSessionState.Listening)
+                {
+                    setupComplete.TrySetResult();
+                }
+                else if (change.Current is VoiceSessionState.Failed or VoiceSessionState.Disconnected)
+                {
+                    setupComplete.TrySetException(new InvalidOperationException(
+                        $"Voice session ended in {change.Current} state before setup-complete arrived."));
+                }
+            };
+            session.StateChanged += stateHandler;
+
             try
             {
                 await session.ConnectAsync(config, ct).ConfigureAwait(false);
+
+                using var setupCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                setupCts.CancelAfter(TimeSpan.FromSeconds(15));
+                await setupComplete.Task.WaitAsync(setupCts.Token).ConfigureAwait(false);
+
                 state = await PumpInboundAsync(socket, session, sendGate, ct).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
@@ -175,6 +202,10 @@ public sealed class TwilioMediaSocketHandler
                 if (handler is not null)
                 {
                     session.EventReceived -= handler;
+                }
+                if (stateHandler is not null)
+                {
+                    session.StateChanged -= stateHandler;
                 }
                 try
                 {

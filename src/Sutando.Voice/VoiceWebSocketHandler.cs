@@ -134,9 +134,36 @@ public sealed class VoiceWebSocketHandler
             };
             session.EventReceived += handler;
 
+            // VoiceSession.ConnectAsync returns BEFORE Gemini Live's setup-complete arrives — its
+            // contract (see VoiceSession.cs remarks) requires the caller to wait for the session
+            // to reach Listening (which fires on RealtimeSetupComplete) before sending. Without
+            // this wait, the first browser frame races the not-yet-complete WS handshake and
+            // surfaces as "The WebSocket client is not connected." from the GenAI SDK.
+            var setupComplete = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            EventHandler<VoiceSessionStateChange> stateHandler = (_, change) =>
+            {
+                if (change.Current == VoiceSessionState.Listening)
+                {
+                    setupComplete.TrySetResult();
+                }
+                else if (change.Current is VoiceSessionState.Failed or VoiceSessionState.Disconnected)
+                {
+                    setupComplete.TrySetException(new InvalidOperationException(
+                        $"Voice session ended in {change.Current} state before setup-complete arrived."));
+                }
+            };
+            session.StateChanged += stateHandler;
+
             try
             {
                 await session.ConnectAsync(config, ct).ConfigureAwait(false);
+
+                // Generous timeout so a slow Gemini cold-start doesn't surface as a spurious
+                // session failure to the browser. Cancelled when the WS handler's ct fires too.
+                using var setupCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                setupCts.CancelAfter(TimeSpan.FromSeconds(15));
+                await setupComplete.Task.WaitAsync(setupCts.Token).ConfigureAwait(false);
+
                 await PumpInboundAsync(socket, session, ct).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
@@ -151,6 +178,7 @@ public sealed class VoiceWebSocketHandler
             finally
             {
                 session.EventReceived -= handler;
+                session.StateChanged -= stateHandler;
                 try
                 {
                     await session.DisconnectAsync(CancellationToken.None).ConfigureAwait(false);
