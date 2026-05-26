@@ -88,16 +88,66 @@ public sealed class SkillRegistryVoiceBridge
             {
                 root = AppContext.BaseDirectory;
             }
-            var tool = new SkillVoiceTool(
-                skill: skill,
-                workspace: workspace,
-                skillRoot: root,
-                loggerFactory: factory,
-                http: sharedHttp,
-                environment: environment,
-                parameterSchemaOverride: schema);
-            _tools[manifest.Id] = tool;
+
+            // Translate dotted / colon-separated ids (e.g. notes.search) into the underscore-only
+            // form Gemini Live requires for tool names. The skill id stays unchanged on the registry
+            // side so `sutando skills run notes.search` keeps working; only the wire-side tool name
+            // changes. We key _tools by the translated name so dispatch on the inbound wire name
+            // resolves correctly.
+            string? nameOverride = null;
+            var translated = TranslateToGeminiToolName(manifest.Id);
+            if (!string.Equals(translated, manifest.Id, StringComparison.Ordinal))
+            {
+                nameOverride = translated;
+            }
+
+            SkillVoiceTool tool;
+            try
+            {
+                tool = new SkillVoiceTool(
+                    skill: skill,
+                    workspace: workspace,
+                    skillRoot: root,
+                    loggerFactory: factory,
+                    http: sharedHttp,
+                    environment: environment,
+                    parameterSchemaOverride: schema,
+                    toolNameOverride: nameOverride);
+            }
+            catch (ArgumentException)
+            {
+                // Skill id still contains characters Gemini rejects even after translation (e.g.
+                // spaces). Skip rather than abort — operators with a mix of valid + invalid skills
+                // shouldn't lose the whole bridge over one bad id.
+                continue;
+            }
+
+            // Collision guard: if two skills translate to the same wire name (e.g. notes.search and
+            // notes_search both registered), drop the second. Loud failure here would block boot;
+            // first-wins keeps the bridge usable.
+            _tools.TryAdd(tool.Definition.Name, tool);
         }
+    }
+
+    /// <summary>
+    /// Translate a Sutando skill id into a Gemini Live-compatible tool name by replacing characters
+    /// the skills convention allows but Gemini does not (currently <c>.</c> and <c>:</c>) with
+    /// underscores. Other characters are left unchanged so the adapter's strict validator still
+    /// surfaces genuinely-invalid ids.
+    /// </summary>
+    /// <param name="id">The skill manifest id.</param>
+    /// <returns>The translated tool name, equal to <paramref name="id"/> when no translation was needed.</returns>
+    private static string TranslateToGeminiToolName(string id)
+    {
+        if (string.IsNullOrEmpty(id))
+        {
+            return id;
+        }
+        if (id.IndexOfAny(['.', ':']) < 0)
+        {
+            return id;
+        }
+        return id.Replace('.', '_').Replace(':', '_');
     }
 
     /// <summary>The number of skills the bridge currently exposes.</summary>

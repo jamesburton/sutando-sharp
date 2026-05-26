@@ -127,6 +127,41 @@ public sealed class SkillRegistryVoiceBridgeTests
     }
 
     [Fact]
+    public void Dotted_skill_id_is_translated_to_underscore_for_Gemini_compatibility()
+    {
+        var registry = new SkillRegistry();
+        registry.RegisterInstance(new FakeSkill("notes.search"));
+        registry.RegisterInstance(new FakeSkill("plain"));
+        var bridge = new SkillRegistryVoiceBridge(registry, Workspace());
+
+        // The dotted id MUST appear on the wire as notes_search (Gemini Live tool-name rule),
+        // but the underlying skill id stays unchanged on the registry.
+        var defs = bridge.GetToolDefinitions();
+        Assert.Contains(defs, d => d.Name == "notes_search");
+        Assert.Contains(defs, d => d.Name == "plain");
+
+        // Dispatcher resolves on the translated wire name — that's what Gemini sends back.
+        Assert.NotNull(bridge.TryGetHandler("notes_search"));
+        Assert.NotNull(bridge.TryGetHandler("plain"));
+
+        // The original dotted id is NOT a valid wire name and must not resolve.
+        Assert.Null(bridge.TryGetHandler("notes.search"));
+    }
+
+    [Fact]
+    public void Skill_id_with_unfixable_invalid_chars_is_skipped_rather_than_aborting_construction()
+    {
+        var registry = new SkillRegistry();
+        registry.RegisterInstance(new FakeSkill("ok-skill"));
+        registry.RegisterInstance(new FakeSkill("bad id with space"));
+        var bridge = new SkillRegistryVoiceBridge(registry, Workspace());
+
+        var defs = bridge.GetToolDefinitions();
+        Assert.Single(defs);
+        Assert.Equal("ok-skill", defs[0].Name);
+    }
+
+    [Fact]
     public void RegisterWith_adds_every_tool_to_the_session()
     {
         var registry = new SkillRegistry();

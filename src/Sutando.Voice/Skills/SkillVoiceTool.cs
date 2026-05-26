@@ -74,7 +74,13 @@ public sealed class SkillVoiceTool
     /// back to a permissive <c>{"type":"object","additionalProperties":{"type":"string"}}</c>
     /// schema that mirrors what <see cref="ISkill.ExecuteAsync"/> actually accepts.
     /// </param>
-    /// <exception cref="ArgumentException">When the skill's id is not a valid Gemini Live tool name.</exception>
+    /// <param name="toolNameOverride">
+    /// Optional explicit tool name. When supplied, used in place of the manifest id (which may
+    /// contain characters Gemini Live rejects — e.g. <c>notes.search</c>'s <c>.</c>). The override
+    /// is itself validated against Gemini's <c>[a-zA-Z0-9_-]{1,63}</c> rule. The bridge supplies
+    /// a translated form so wire-side dispatch works without renaming the skill id.
+    /// </param>
+    /// <exception cref="ArgumentException">When the skill's id (or override) is not a valid Gemini Live tool name.</exception>
     public SkillVoiceTool(
         ISkill skill,
         WorkspaceDirectory workspace,
@@ -82,7 +88,8 @@ public sealed class SkillVoiceTool
         ILoggerFactory? loggerFactory = null,
         HttpClient? http = null,
         IReadOnlyDictionary<string, string>? environment = null,
-        JsonElement? parameterSchemaOverride = null)
+        JsonElement? parameterSchemaOverride = null,
+        string? toolNameOverride = null)
     {
         ArgumentNullException.ThrowIfNull(skill);
         ArgumentNullException.ThrowIfNull(workspace);
@@ -95,7 +102,7 @@ public sealed class SkillVoiceTool
         _http = http ?? new HttpClient();
         _environment = environment;
 
-        var name = skill.Manifest.Id;
+        var name = toolNameOverride ?? skill.Manifest.Id;
         ValidateGeminiToolName(name);
 
         var schema = parameterSchemaOverride ?? BuildDefaultSchema(skill.Manifest.Description);
