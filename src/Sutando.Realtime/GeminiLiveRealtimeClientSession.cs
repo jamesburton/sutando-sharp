@@ -49,12 +49,11 @@ public sealed class GeminiLiveRealtimeClientSession : IRealtimeClientSession
             SingleWriter = false,
             AllowSynchronousContinuations = false,
         });
-    private readonly SemaphoreSlim _connectGate = new(1, 1);
+    private readonly AsyncOnceGate _connectGate = new();
 
     private MultiModalLiveClient? _client;
     private RealtimeCloseInitiator _closeInitiator = RealtimeCloseInitiator.Unexpected;
     private int _channelClosed; // 0 = open, 1 = closed; flipped via Interlocked
-    private bool _connectInitiated;
     private bool _disposed;
 
     /// <summary>Creates a new session. Normally called by <see cref="GeminiLiveRealtimeClient.CreateSessionAsync"/>.</summary>
@@ -161,57 +160,72 @@ public sealed class GeminiLiveRealtimeClientSession : IRealtimeClientSession
 
     // --- connection lifecycle -------------------------------------------
 
-    private async Task EnsureConnectedAsync(CancellationToken ct)
+    private Task EnsureConnectedAsync(CancellationToken ct)
     {
-        if (_connectInitiated)
-        {
-            return;
-        }
+        // AsyncOnceGate guarantees that the gate doesn't flip to "completed" until the initialiser
+        // (ConnectAsync + SendSetupAsync) has fully returned. That fixes a previous race where a
+        // concurrent SendAsync could short-circuit on a "_connectInitiated = true" flag that was
+        // set BEFORE ConnectAsync awaited — and then drive into client.SendXxxAsync while the
+        // underlying WebSocket was still mid-handshake, surfacing as
+        // "The WebSocket client is not connected." from the GenAI SDK.
+        return _connectGate.EnsureAsync(InitializeConnectionAsync, ct);
+    }
 
-        await _connectGate.WaitAsync(ct).ConfigureAwait(false);
+    private async Task InitializeConnectionAsync(CancellationToken ct)
+    {
+        _closeInitiator = RealtimeCloseInitiator.Unexpected;
+
+        var googleAi = new GoogleAi(_apiKey);
+        var model = googleAi.CreateGenerativeModel(_config.Model);
+
+        var setup = BuildSetup(_config);
+
+        var client = model.CreateMultiModalLiveClient(
+            config: setup.GenerationConfig,
+            safetySettings: null,
+            systemInstruction: _config.SystemInstruction,
+            logger: _logger);
+
+        // Wire event handlers BEFORE connecting so we don't miss frames the server emits
+        // immediately after setup-complete.
+        client.MessageReceived += OnMessageReceived;
+        client.AudioChunkReceived += OnAudioChunkReceived;
+        client.InputTranscriptionReceived += OnInputTranscription;
+        client.OutputTranscriptionReceived += OnOutputTranscription;
+        client.GenerationInterrupted += OnGenerationInterrupted;
+        client.GoAwayReceived += OnGoAwayReceived;
+        client.SessionResumableUpdateReceived += OnSessionResumableUpdate;
+        client.Disconnected += OnSdkDisconnected;
+        client.ErrorOccurred += OnSdkError;
+
         try
         {
-            if (_connectInitiated)
-            {
-                return;
-            }
-
-            _closeInitiator = RealtimeCloseInitiator.Unexpected;
-
-            var googleAi = new GoogleAi(_apiKey);
-            var model = googleAi.CreateGenerativeModel(_config.Model);
-
-            var setup = BuildSetup(_config);
-
-            var client = model.CreateMultiModalLiveClient(
-                config: setup.GenerationConfig,
-                safetySettings: null,
-                systemInstruction: _config.SystemInstruction,
-                logger: _logger);
-
-            // Wire event handlers BEFORE connecting so we don't miss frames the server emits
-            // immediately after setup-complete.
-            client.MessageReceived += OnMessageReceived;
-            client.AudioChunkReceived += OnAudioChunkReceived;
-            client.InputTranscriptionReceived += OnInputTranscription;
-            client.OutputTranscriptionReceived += OnOutputTranscription;
-            client.GenerationInterrupted += OnGenerationInterrupted;
-            client.GoAwayReceived += OnGoAwayReceived;
-            client.SessionResumableUpdateReceived += OnSessionResumableUpdate;
-            client.Disconnected += OnSdkDisconnected;
-            client.ErrorOccurred += OnSdkError;
-
-            _client = client;
-            _connectInitiated = true;
-
             // autoSendSetup=false because we want full control over the setup payload.
             await client.ConnectAsync(autoSendSetup: false, cancellationToken: ct).ConfigureAwait(false);
             await client.SendSetupAsync(setup, ct).ConfigureAwait(false);
         }
-        finally
+        catch
         {
-            _connectGate.Release();
+            // Connect or setup failed — unwire handlers and dispose so a retry through the gate
+            // sees a clean slate. _client stays null so the next caller's EnsureConnectedAsync
+            // re-enters the initialiser instead of using a half-dead client.
+            client.MessageReceived -= OnMessageReceived;
+            client.AudioChunkReceived -= OnAudioChunkReceived;
+            client.InputTranscriptionReceived -= OnInputTranscription;
+            client.OutputTranscriptionReceived -= OnOutputTranscription;
+            client.GenerationInterrupted -= OnGenerationInterrupted;
+            client.GoAwayReceived -= OnGoAwayReceived;
+            client.SessionResumableUpdateReceived -= OnSessionResumableUpdate;
+            client.Disconnected -= OnSdkDisconnected;
+            client.ErrorOccurred -= OnSdkError;
+            try { client.Dispose(); } catch { /* swallow */ }
+            throw;
         }
+
+        // Only publish the live client after the WS handshake AND setup envelope are accepted.
+        // A concurrent caller waiting on the gate sees null until this assignment, then the gate
+        // flips to completed inside AsyncOnceGate, then the wakeup proceeds to use _client.
+        _client = client;
     }
 
     private async Task DisconnectAsync()
