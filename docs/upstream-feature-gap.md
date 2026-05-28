@@ -67,6 +67,12 @@ Numbers in `[…]` are the porting buckets from [`skills-taxonomy.md`](skills-ta
 | `bot2bot-post` | [A] | Discord REST cross-instance messaging. | Already have `Sutando.Channels.Discord`; this is a thin skill on top of its REST surface. |
 | `health-check` | [A] | Process / port / log probes; OS-supervised launchd watchdog on macOS. | Cross-platform port reasonable; the launchd wrapper becomes a Windows Service or scheduled task. |
 
+## Tracked upstream PRs not yet ported
+
+| Upstream | Description | sutando-sharp |
+|---|---|---|
+| [sonichi/sutando#1306](https://github.com/sonichi/sutando/pull/1306) | Opt-in Azure GPT Realtime voice backend (`VOICE_BACKEND=gpt-realtime`). Default Gemini Live path untouched. Draft pending bodhi legacy-protocol PR. | ❌ Port plan written: [`docs/azure-realtime-backend-plan.md`](azure-realtime-backend-plan.md). Plugs into existing `IRealtimeTransportFactory` seam alongside `GeminiLiveTransportFactory` and `LocalPipelineTransportFactory`. No bodhi blocker for the .NET port (we wrap `RealtimeConversationClient` directly). |
+
 ## Architectural gaps (entire upstream concepts not yet present)
 
 These aren't "one missing skill" — they're cross-cutting capabilities upstream
